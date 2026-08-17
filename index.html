@@ -17,10 +17,23 @@
 
   各書卷生命讀經篇數與篇名，均逐一比對 Living Stream Ministry 官方網站
   lsmchinese.org「網上生命讀經」目錄頁面 (500lifestudies.org 僅作為輔助交叉核對)。
-  目前 TITLE_DB 已收錄 66 卷中的 60 卷官方篇名資料庫；其中「撒母耳記上／下」、
-  「列王紀上／下」、「歷代志上／下」因官方僅發行「上下合訂」的單一目錄頁面
-  （無法拆分成兩個獨立篇數），暫不提供篇名自動帶入，選取後請自行輸入篇名，
-  其餘書卷若日後發現有誤，仍可直接於篇名欄位手動修改。
+  TITLE_DB 現已收錄 66 卷全部官方篇名資料庫。「撒母耳記上／下」、
+  「列王紀上／下」、「歷代志上／下」這三組書卷，官方各自只發行「上下合訂」
+  的單一目錄頁面，因此資料庫中同一組的「上」與「下」共用同一份官方篇名清單與篇數，
+  選取「上」或「下」都會帶出同一份篇名，仍可依實際經文範圍自行修改。
+
+  V9 更新：
+  1. 新增固定於畫面（隨捲動）的頁面模式切換籤：✍️內文編排（編輯，預設）／
+     📄 Word 逐字稿預覽。預覽頁模擬 A4 紙、Word 樣式字體與排版，並「即時同步」
+     所有輸入欄位與段落資料——實際作法是讓網頁預覽與匯出的 .doc 檔共用同一個
+     buildWordHtmlBody() 產生的 HTML 字串，因此兩者的內容與排版保證 100%一致，
+     不會有任何落差。
+  2. 完全依照使用者提供的參考 Word 檔（20260810生命讀經共讀班規劃）重寫匯出內容
+     結構：主持人金鑰、共讀預備方式 1~5 點、本次配搭與兄長提醒、當天會前預備
+     1~5 點（含 a~c）、開場 1~3 點與開頭禱告基本架構、聚會開始等固定段落全數
+     保留，並將篇題、經節範圍、今日經節內容、分段內文動態代入對應位置。
+  3. 配搭 1/2/3 專屬高對比深色（非淺色）粗體標記：凡逐字稿中出現對應弟兄的
+     姓名／人位標籤，一律套用其專屬顏色，網頁 Word 預覽與匯出 .doc 檔完全同步。
 -->
 
 <style>
@@ -105,7 +118,7 @@
     position: fixed;
     top: 1rem;
     right: 1rem;
-    z-index: 60;
+    z-index: 80;
     width: 2.6rem;
     height: 2.6rem;
     border-radius: 50%;
@@ -122,6 +135,72 @@
   }
   .theme-toggle:hover { transform: scale(1.08) rotate(8deg); box-shadow: 0 8px 24px rgba(0,0,0,.35); }
   html[data-theme="light"] .theme-toggle { background: rgba(31,36,48,.08); border-color: rgba(31,36,48,.14); color: var(--accent-dark); }
+
+  /* ---------- 頁面模式切換籤（編輯／Word 預覽，固定於畫面隨捲動） ---------- */
+  .mode-toggle-bar {
+    position: fixed;
+    top: 1rem;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 80;
+    display: flex;
+    gap: .25rem;
+    background: rgba(255,255,255,.12);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(255,255,255,.28);
+    border-radius: 2rem;
+    padding: .3rem;
+    box-shadow: 0 6px 18px rgba(0,0,0,.28);
+  }
+  html[data-theme="light"] .mode-toggle-bar { background: rgba(31,36,48,.08); border-color: rgba(31,36,48,.14); }
+  .mode-tab {
+    border: none;
+    background: transparent;
+    color: #fff;
+    font-weight: 700;
+    font-size: .84rem;
+    padding: .5rem 1rem;
+    border-radius: 2rem;
+    cursor: pointer;
+    transition: background .15s, color .15s, box-shadow .15s;
+    white-space: nowrap;
+  }
+  html[data-theme="light"] .mode-tab { color: var(--accent-dark); }
+  .mode-tab.active {
+    background: linear-gradient(135deg, var(--accent-dark), var(--accent2));
+    color: #fff;
+    box-shadow: 0 4px 14px rgba(79,70,229,.4);
+  }
+
+  /* ---------- Word 逐字稿預覽（模擬 A4 紙張） ---------- */
+  #previewView { max-width: 900px; margin: 0 auto; padding: 5.2rem 1rem 3rem; }
+  .preview-toolbar {
+    display: flex; justify-content: center; align-items: center; gap: .8rem;
+    margin-bottom: 1rem; flex-wrap: wrap;
+  }
+  .preview-note { text-align: center; color: var(--muted); font-size: .8rem; margin-bottom: 1.1rem; }
+  .btn-export {
+    background: linear-gradient(135deg, var(--accent-dark), var(--accent) 45%, var(--accent2));
+    color: #fff; border: none; font-weight: 800; font-size: .92rem;
+    padding: .62rem 1.4rem; border-radius: .7rem; cursor: pointer;
+    box-shadow: 0 8px 20px rgba(79,70,229,.32);
+    transition: transform .12s, box-shadow .12s;
+  }
+  .btn-export:hover { transform: translateY(-1px); box-shadow: 0 12px 26px rgba(79,70,229,.4); }
+  .a4-page {
+    background: #ffffff !important;
+    color: #333333;
+    font-family: "Microsoft JhengHei", "PMingLiU", "Noto Sans TC", sans-serif;
+    width: 100%;
+    max-width: 780px;
+    margin: 0 auto 2.5rem;
+    padding: 3.2rem 2.6rem;
+    box-shadow: 0 20px 60px rgba(0,0,0,.45), 0 0 0 1px rgba(0,0,0,.08);
+    border-radius: 2px;
+    min-height: 1050px;
+    line-height: 1.6;
+  }
 
   .app-header {
     background: var(--header-grad);
@@ -375,7 +454,6 @@
     width: auto;
     min-width: 190px;
     font-weight: 700;
-    color: var(--accent);
   }
 
   .segment-card-header .spacer { flex: 1 1 auto; }
@@ -430,6 +508,13 @@
 <body>
 
 <button type="button" id="themeToggle" class="theme-toggle" title="切換深色／淺色模式" aria-label="切換深色／淺色模式">🌙</button>
+
+<div class="mode-toggle-bar" role="tablist" aria-label="頁面模式切換">
+  <button type="button" class="mode-tab active" id="tabEdit" data-mode="edit" role="tab" aria-selected="true">✍️ 內文編排</button>
+  <button type="button" class="mode-tab" id="tabPreview" data-mode="preview" role="tab" aria-selected="false">📄 Word 逐字稿預覽</button>
+</div>
+
+<div id="editView">
 
 <div class="app-header text-center">
   <h1>📖 生命讀經共讀班｜逐字稿段落編輯 &amp; Word 產生器</h1>
@@ -542,6 +627,17 @@
   <footer class="app-footer">所有資料僅於您的瀏覽器端處理，不會上傳至任何伺服器；本頁不需要網路連線即可產生 Word 檔。<br>前言回顧與連結非規劃者的工作，故本頁不提供輸入欄位，將於匯出檔中留白提示由主持人當日自行預備。<br>匯出的 Word 檔一律採用標準白底黑字排版，不受本頁深色／淺色主題影響。</footer>
 </div>
 
+</div>
+
+<div id="previewView" style="display:none;">
+  <div class="preview-toolbar">
+    <button type="button" id="backToEditBtn" class="btn-secondary">⬅️ 回到編輯</button>
+    <button type="button" id="previewGenerateBtn" class="btn-export">⚙️ 匯出 Word (.doc) 檔</button>
+  </div>
+  <div class="preview-note">以下為即時同步的 Word 逐字稿預覽，內容與匯出的 .doc 檔完全一致</div>
+  <div class="a4-page" id="previewPage"></div>
+</div>
+
 <script>
 /* ============================================================
    主題（深色／淺色）切換 —— 純前端 localStorage 記憶，
@@ -568,13 +664,37 @@
 })();
 
 /* ============================================================
+   頁面模式切換：✍️ 內文編排（編輯） ／ 📄 Word 逐字稿預覽
+   預覽頁與匯出的 .doc 檔共用同一個 buildWordHtmlBody() 產生的
+   HTML，因此保證兩者內容與排版完全一致，並在任何欄位變動時
+   即時（同步呼叫）重新渲染，達到 0 秒同步的效果。
+   ============================================================ */
+function setPageMode(mode) {
+  var isPreview = mode === "preview";
+  var editView = document.getElementById("editView");
+  var previewView = document.getElementById("previewView");
+  var tabEdit = document.getElementById("tabEdit");
+  var tabPreview = document.getElementById("tabPreview");
+  if (editView) editView.style.display = isPreview ? "none" : "";
+  if (previewView) previewView.style.display = isPreview ? "" : "none";
+  if (tabEdit) { tabEdit.classList.toggle("active", !isPreview); tabEdit.setAttribute("aria-selected", String(!isPreview)); }
+  if (tabPreview) { tabPreview.classList.toggle("active", isPreview); tabPreview.setAttribute("aria-selected", String(isPreview)); }
+  if (isPreview && typeof renderPreview === "function") renderPreview();
+  window.scrollTo(0, 0);
+}
+document.getElementById("tabEdit").addEventListener("click", function () { setPageMode("edit"); });
+document.getElementById("tabPreview").addEventListener("click", function () { setPageMode("preview"); });
+document.getElementById("backToEditBtn").addEventListener("click", function () { setPageMode("edit"); });
+document.getElementById("previewGenerateBtn").addEventListener("click", function () { generateAll(); });
+
+/* ============================================================
    常數：66 卷生命讀經書名與篇數（逐一比對 lsmchinese.org 官方
    「網上生命讀經」目錄頁面校正；500lifestudies.org 僅作交叉參考）
    ============================================================ */
 const BOOKS_OT = [
   ["創世記", 120], ["出埃及記", 185], ["利未記", 64], ["民數記", 53], ["申命記", 30],
   ["約書亞記", 15], ["士師記", 10], ["路得記", 8], ["撒母耳記上", 38], ["撒母耳記下", 38],
-  ["列王紀上", 23], ["列王紀下", 23], ["歷代志上", 26], ["歷代志下", 26], ["以斯拉記", 5],
+  ["列王紀上", 23], ["列王紀下", 23], ["歷代志上", 13], ["歷代志下", 13], ["以斯拉記", 5],
   ["尼希米記", 5], ["以斯帖記", 3], ["約伯記", 38], ["詩篇", 45], ["箴言", 8],
   ["傳道書", 2], ["雅歌", 10], ["以賽亞書", 54], ["耶利米書", 40], ["耶利米哀歌", 4],
   ["以西結書", 27], ["但以理書", 17], ["何西阿書", 9], ["約珥書", 7], ["阿摩司書", 3],
@@ -593,10 +713,18 @@ const BOOKS_ALL = [...BOOKS_OT, ...BOOKS_NT];
 
 /* ============================================================
    常數：篇名資料庫（逐篇比對 lsmchinese.org 官方目錄彙整）
-   目前收錄 60／66 卷；撒母耳記上下、列王紀上下、歷代志上下因官方
-   僅有「上下合訂」單一目錄頁面，暫不提供，選取後請自行輸入篇名。
+   現已收錄 66／66 卷；撒母耳記上下、列王紀上下、歷代志上下因官方
+   僅有「上下合訂」單一目錄頁面，同組上／下共用同一份篇名清單。
    ============================================================ */
 const TITLE_DB = {
+// V8 新增：撒母耳記、列王紀、歷代志官方只發行「上下合訂」目錄，
+// 上／下共用同一份官方篇名清單與篇數（詳見上方檔頭說明）。
+"撒母耳記上": ["介言","撒母耳的歷史（一）他的出身、出生、與幼年","撒母耳的歷史（二）他與陳腐衰微之亞倫祭司職分的關係（一）","撒母耳的歷史（三）他與陳腐衰微之亞倫祭司職分的關係（二）","撒母耳的歷史（四）他的職事（一）","撒母耳的歷史（五）他的職事（二）","撒母耳－一個照著神的人","掃羅的歷史（一）他的出身與神的膏立","掃羅的歷史（二）掃羅征服亞捫人以及撒母耳重新題醒以色列人","掃羅的歷史（三）掃羅征服非利士人","掃羅的歷史（四）掃羅在征服亞瑪力人之事上的不順從","大衛的歷史（一）神所豫備，合乎神心的人","大衛的歷史（二）神所豫備，合乎神心的人","大衛的歷史（三）神所豫備，合乎神心的人","神的主宰以及大衛學十字架的功課","大衛的歷史（四）神所豫備，合乎神心的人","大衛的歷史（五）神所豫備，合乎神心的人","大衛的歷史（六）神所豫備，合乎神心的人","在撒母耳記上一章至撒母耳記下一章裏五個主要人物關於享受美地的功課","大衛的歷史（七）為百姓所加冠，作神在地上之國的王","大衛的歷史（八）為百姓所加冠，作神在地上之國的王","大衛的歷史（九）為百姓所加冠，作神在地上之國的王","大衛的歷史（十）為百姓所加冠，作神在地上之國的王","我們需要神將基督建造到我們裏面","大衛的後裔和神的兒子","神在基督裏，藉著新陳代謝變化的過程，將祂自己建造到我們裏面","關於大衛的後裔稱為神的兒子的豫言","神渴望將祂自己建造到我們裏面，並將我們建造到祂裏面，產生一個相互的住處","神要在基督裏將祂自己建造到我們裏面的目的","經過過程之三一神的獨一工作－將祂自己建造到我們裏面","大衛的後裔被標出為神兒子的意義","大衛的歷史（十一）為百姓所加冠，作神在地上之國的王","大衛的歷史（十二）為百姓所加冠，作神在地上之國的王","人的失敗和神的懲治","大衛的歷史（十三）為百姓所加冠，作神在地上之國的王","大衛的歷史（十四）為百姓所加冠，作神在地上之國的王","大衛的歷史（十五）為百姓所加冠，作神在地上之國的王","大衛的歷史（十六）為百姓所加冠，作神在地上之國的王"],
+"撒母耳記下": ["介言","撒母耳的歷史（一）他的出身、出生、與幼年","撒母耳的歷史（二）他與陳腐衰微之亞倫祭司職分的關係（一）","撒母耳的歷史（三）他與陳腐衰微之亞倫祭司職分的關係（二）","撒母耳的歷史（四）他的職事（一）","撒母耳的歷史（五）他的職事（二）","撒母耳－一個照著神的人","掃羅的歷史（一）他的出身與神的膏立","掃羅的歷史（二）掃羅征服亞捫人以及撒母耳重新題醒以色列人","掃羅的歷史（三）掃羅征服非利士人","掃羅的歷史（四）掃羅在征服亞瑪力人之事上的不順從","大衛的歷史（一）神所豫備，合乎神心的人","大衛的歷史（二）神所豫備，合乎神心的人","大衛的歷史（三）神所豫備，合乎神心的人","神的主宰以及大衛學十字架的功課","大衛的歷史（四）神所豫備，合乎神心的人","大衛的歷史（五）神所豫備，合乎神心的人","大衛的歷史（六）神所豫備，合乎神心的人","在撒母耳記上一章至撒母耳記下一章裏五個主要人物關於享受美地的功課","大衛的歷史（七）為百姓所加冠，作神在地上之國的王","大衛的歷史（八）為百姓所加冠，作神在地上之國的王","大衛的歷史（九）為百姓所加冠，作神在地上之國的王","大衛的歷史（十）為百姓所加冠，作神在地上之國的王","我們需要神將基督建造到我們裏面","大衛的後裔和神的兒子","神在基督裏，藉著新陳代謝變化的過程，將祂自己建造到我們裏面","關於大衛的後裔稱為神的兒子的豫言","神渴望將祂自己建造到我們裏面，並將我們建造到祂裏面，產生一個相互的住處","神要在基督裏將祂自己建造到我們裏面的目的","經過過程之三一神的獨一工作－將祂自己建造到我們裏面","大衛的後裔被標出為神兒子的意義","大衛的歷史（十一）為百姓所加冠，作神在地上之國的王","大衛的歷史（十二）為百姓所加冠，作神在地上之國的王","人的失敗和神的懲治","大衛的歷史（十三）為百姓所加冠，作神在地上之國的王","大衛的歷史（十四）為百姓所加冠，作神在地上之國的王","大衛的歷史（十五）為百姓所加冠，作神在地上之國的王","大衛的歷史（十六）為百姓所加冠，作神在地上之國的王"],
+"列王紀上": ["介言","大衛的晚年和離世","所羅門作王（一）","所羅門作王（二）","所羅門作王（三）","所羅門作王（四）","所羅門作王（五）","以色列國分裂，以及羅波安作猶大王，耶羅波安作以色列王","亞比央和亞撒作猶大王，拿答、巴沙、以拉、心利、和暗利作以色列王，以及亞哈作以色列王（一）","亞哈作以色列王（二）","亞哈作以色列王（三），以及約沙法作猶大王","亞哈謝作以色列王以及以利亞被提","以利沙恩典的職事","約蘭作以色列王","約蘭和亞哈謝作猶大王以及耶戶作以色列王","亞他利雅與約阿施作猶大王","約哈斯、約阿施、和耶羅波安作以色列王，以及亞瑪謝作猶大王","亞撒利雅、約坦、和亞哈斯作猶大王，以及撒迦利雅、沙龍、米拿現、比加轄、和比加作以色列王","何細亞作以色列王","希西家作猶大王","瑪拿西、亞們、和約西亞作猶大王","約哈斯、約雅敬、約雅斤、和西底家作猶大王，以及基大利的管理","以色列中諸王之歷史生命讀經的結語"],
+"列王紀下": ["介言","大衛的晚年和離世","所羅門作王（一）","所羅門作王（二）","所羅門作王（三）","所羅門作王（四）","所羅門作王（五）","以色列國分裂，以及羅波安作猶大王，耶羅波安作以色列王","亞比央和亞撒作猶大王，拿答、巴沙、以拉、心利、和暗利作以色列王，以及亞哈作以色列王（一）","亞哈作以色列王（二）","亞哈作以色列王（三），以及約沙法作猶大王","亞哈謝作以色列王以及以利亞被提","以利沙恩典的職事","約蘭作以色列王","約蘭和亞哈謝作猶大王以及耶戶作以色列王","亞他利雅與約阿施作猶大王","約哈斯、約阿施、和耶羅波安作以色列王，以及亞瑪謝作猶大王","亞撒利雅、約坦、和亞哈斯作猶大王，以及撒迦利雅、沙龍、米拿現、比加轄、和比加作以色列王","何細亞作以色列王","希西家作猶大王","瑪拿西、亞們、和約西亞作猶大王","約哈斯、約雅敬、約雅斤、和西底家作猶大王，以及基大利的管理","以色列中諸王之歷史生命讀經的結語"],
+"歷代志上": ["介言","神的複製","從亞當到以色列十二支派的家譜","神福音的最高點","大衛歷史的補充","猶大諸王歷史的補充（一）","完全基要，並照著包羅萬有的靈而行","從猶大諸王的例子學習在日常生活中過神人的生活","猶大諸王歷史的補充（二）","猶大諸王歷史的補充（三）","活基督以彰顯基督","猶大諸王歷史之補充的結語","神與人在形像和樣式上的相似"],
+"歷代志下": ["介言","神的複製","從亞當到以色列十二支派的家譜","神福音的最高點","大衛歷史的補充","猶大諸王歷史的補充（一）","完全基要，並照著包羅萬有的靈而行","從猶大諸王的例子學習在日常生活中過神人的生活","猶大諸王歷史的補充（二）","猶大諸王歷史的補充（三）","活基督以彰顯基督","猶大諸王歷史之補充的結語","神與人在形像和樣式上的相似"],
 "啟示錄": ["前言","基督的啟示－惟一並終極的","耶穌的見證－特殊並終結的","啟示錄裡的三一神","基督的再來","在耶穌的患難、國度、忍耐裡一同有分","眾地方召會","七燈臺","在眾召會中間的人子","在以弗所的召會－愛、生命和光","在士每拿的召會－復活的生命和生命的冠冕","在別迦摩的召會－為著變化而喫","在推雅推喇的召會－權柄和晨星","在撒狄的召會－白衣和被主承認的名","在非拉鐵非的召會－大災難前被提和神殿中的柱子","在老底嘉的召會－與主一同坐席，坐在祂的寶座上","基督升天後天上的景象","是配的獅子羔羊","自基督升天到這世代末了的世界史－第一印到第四印","殉道聖徒的呼喊和神的答應－第五印和第六印","神對祂子民的保守","羔羊的七眼為著神的建造","揭開第七印後天上的景象，與對地、海、江河、日、月、星辰的審判－頭四號","人的審判－第五號","對人進一步的審判－第六號","基督來據有地","耶路撒冷被踐踏與兩個見證人的見證","第七號","信徒的被提（一）","信徒的被提（二）","對燈臺經歷的四方面","經歷基督變化並建造的生命","有七眼的石頭為著神的建造","宇宙的光明婦人","婦人和男孩子","男孩子和婦人其餘的兒女","大紅龍及其逼迫","天上的爭戰","光明婦人的實際與實行","從海中上來的獸（一）","從海中上來的獸（二）","從海中上來的獸（三）","從海中上來的獸（四）","從地裡上來的獸","啟示錄十二章的異象與以弗所書的一致之處","初熟的果子","初熟果子被提後所要發生的事","莊稼和大酒醡","晚期的得勝者和七碗（一）","七碗（二）","騎在朱紅色獸上的大妓女（一）","騎在朱紅色獸上的大妓女（二）","物質的巴比倫","羔羊的婚娶和婚筵","哈米吉頓的戰爭","千年國","人類末次的背叛與白色大寶座前的審判","新天新地","新耶路撒冷（一）","新耶路撒冷（二）","新耶路撒冷（三）","新耶路撒冷（四）","新耶路撒冷（五）","新耶路撒冷（六）","新耶路撒冷（七）","在永世裡蒙神救贖者的享受與福分","結語","經歷七燈、七眼和七靈"],
 "哥林多前書": ["引言（一）","引言（二）","引言（三）","基督和祂的十字架，是召會中所有難處的惟一解答（一）","基督和祂的十字架，是召會中所有難處的惟一解答（二）","基督不是分開的","釘十字架的基督，是神的能力和神的智慧（一）","釘十字架的基督，是神的能力和神的智慧（二）","基督是我們的智慧：公義、聖別和救贖","為著有分於基督，四件要緊的事","有分於基督的交通","有分於基督作我們的分","經歷基督作從神給我們的智慧","基督的交通帶進對祂的經歷","釘十字架的基督，是使徒職事的中心","神奧祕中的智慧─基督是神深奧的事","用屬靈的話，向屬靈的人，解釋屬靈的事","在認識基督是神的深奧上的二靈","人的靈知道人的事，神的靈知道神的事（一）","人的靈知道人的事，神的靈知道神的事（二）","人的靈知道人的事，神的靈知道神的事（三）","召會是神的耕地和建築（一）","召會是神的耕地和建築（二）","需要在生命中長大（一）","需要在生命中長大（二）","用變化的材料所建造的工程","用天然的東西所建造的工程","在惟一的根基上建造","餧養、喝、喫、栽種、澆灌並生長","神的耕地與神的建築","變化為著建造","建造或是毀壞神的殿","萬有都是為著召會，召會是為著基督","神的奧祕的管家（一）","神的奧祕的管家（二）","對付惡弟兄","對付信徒間的訴訟","對付濫用自由（一）","對付濫用自由（二）","對付濫用自由（三）","對付婚姻的生活（一）","對付婚姻的生活（二）","對付婚姻的生活（三）","對付喫祭偶像之物（一）","對付喫祭偶像之物（二）","對付喫祭偶像之物（三）","以色列人的豫表","長大達到完全據有並享受基督","主的筵席（一）","主的筵席（二）","正當的喫","哥林多前書的鳥瞰","對付蒙頭","對付主的晚餐（一）","對付主的晚餐（二）","對付主的晚餐（三）","對付恩賜（一）","對付恩賜（二）","對付恩賜（三）","對付恩賜（四）","對付恩賜（五）","對付恩賜（六）今天說方言的難處","對付恩賜（七）","正確的基督徒聚會","對付復活（一）","對付復活（二）","對付復活（三）","對付復活（四）","對付收集餽送與結語"],
 "哥林多後書": ["引言（一）","引言（二）","引言（三）","引言（四）","新約的職事（一）","新約的職事（二）","新約的職事（三）","新約的執事（一）","新約的執事（二）","新約的執事（三）","新約的執事（四）","新約的執事（五）","新約的執事（六）","新約的執事（七）","為著召會活基督的榜樣（一）","為著召會活基督的榜樣（二）","聯結、受膏、受印、被擄獲、被征服、被帥領，好撒播基督的香（一）","聯結、受膏、受印、被擄獲、被征服、被帥領，好撒播基督的香（二）","彀資格以基督為字母，用活神賜生命的靈書寫活信（一）","彀資格以基督為字母，用活神賜生命的靈書寫活信（二）","照耀出新約的榮光（一）","照耀出新約的榮光（二）","以沒有帕子遮蔽的臉，觀看並返照主的榮光，漸漸變化成為與主同樣的形像，從榮耀到榮耀，乃是從主靈變化成的（一）","以沒有帕子遮蔽的臉，觀看並返照主的榮光，漸漸變化成為與主同樣的形像，從榮耀到榮耀，乃是從主靈變化成的（二）","新約職事的素質（一）","新約職事的素質（二）","那靈（作生命的供應）的職事，與義（作神的彰顯）的職事（一）","那靈（作生命的供應）的職事，與義（作神的彰顯）的職事（二）","那靈（作生命的供應）的職事，與義（作神的彰顯）的職事（三）","執事與職事成為一","藉著十字架的殺死將生命顯明出來（一）","藉著十字架的殺死將生命顯明出來（二）","耶穌的治死與裡面之人的更新（一）","耶穌的治死與裡面之人的更新（二）","耶穌的治死與裡面之人的更新（三）","藉著第二步的和好，在基督裡的新造成為神的義（一）","藉著第二步的和好，在基督裡的新造成為神的義（二）","神性與人性的調和","新約的執事（八）","新約的執事（九）","新約的執事（十）","新約的執事（十一）","新約的執事（十二）","新約的執事（十三）","新約的執事（十四）","使徒關於供給缺乏聖徒的交通（一）","使徒關於供給缺乏聖徒的交通（二）","使徒關於供給缺乏聖徒的交通（三）","使徒關於供給缺乏聖徒的交通（四）","保羅為他使徒權柄的表白（一）","保羅為他使徒權柄的表白（二）","保羅為他使徒權柄的表白（三）","保羅為他使徒權柄的表白（四）","保羅為他使徒權柄的表白（五）","保羅為他使徒權柄的表白（六）","保羅為他使徒權柄的表白（七）","保羅為他使徒權柄的表白（八）","末了的勸勉、問安與祝福（一）","末了的勸勉、問安與祝福（二）"],
@@ -658,12 +786,11 @@ const TITLE_DB = {
 "約翰三書": ["接待作客旅的工人","不要效法惡，只要效法善"],
 "猶大書": ["為信仰爭辯","背道者的邪惡，及其在主審判下的刑罰","對信徒的囑咐","彼得和猶大書信的基本結構（一）","彼得和猶大書信的基本結構（二）"]
 };
-
 /* ============================================================
    常數：人位角色與固定配搭
    ============================================================ */
 const ROLE_FIXED_PARTNER = { midShare: "partner2", endShare: "partner3", closePray: "partner1" };
-const ROLE_ACTION_LABEL  = { midShare: "重點分享", endShare: "重點分享", closePray: "用靈結尾禱告" };
+const ROLE_ACTION_LABEL  = { midShare: "要點分享", endShare: "要點分享", closePray: "用靈結尾禱告" };
 const ROLE_MENU_LABEL    = { midShare: "中間分享", endShare: "結尾分享", closePray: "結尾禱告" };
 const FIXED_PLACEHOLDER_TEXT = {
   midShare: "（請依信息內容分享1~2個重點，並於共讀當日中午前繳交申言稿）",
@@ -866,6 +993,43 @@ function speakerHeadingText(key, data) {
   return `${partnerDisplay(fixedPartner, data)} ${ROLE_ACTION_LABEL[key]}`;
 }
 
+/* ============================================================
+   配搭三色高對比標記（嚴禁淺色／淡色，確保螢幕閱讀清晰）
+   凡逐字稿中出現配搭 1/2/3 的姓名／人位標籤，網頁 Word 預覽與
+   匯出 .doc 檔一律套用其專屬深色＋粗體。顏色綁定「人位角色」，
+   而非特定姓名本身——即配搭 1/2/3 換人時，顏色仍依角色固定不變
+   （可參考使用者提供之參考 Word 檔所採用的三色配色）。
+   ============================================================ */
+const PARTNER_COLORS = { partner1: "#B45F06", partner2: "#85200C", partner3: "#38761D" };
+const HOST_KEY = "255134"; // 主持人金鑰：Zoom 常態會議室固定金鑰，非每週異動資料
+
+function partnerDisplayShort(key, data) {
+  const nameMap = { partner1: data.partner1Name, partner2: data.partner2Name, partner3: data.partner3Name };
+  const fallback = { partner1: "配搭1", partner2: "配搭2", partner3: "配搭3" };
+  const name = (nameMap[key] || "").trim();
+  if (!name) return fallback[key] || key;
+  return `${name}弟兄`;
+}
+
+// 配搭姓名／人位標籤的專屬顏色＋粗體 HTML。
+// withHall=true：帶會所代號（用於文件開頭「本次配搭人位及順序」及逐字稿
+// 第一次用靈提醒／禱告／宣讀經文標題）；withHall=false：其餘所有後續標題
+// 一律使用不帶會所代號的簡短形式（完全對應參考 Word 檔的呈現規則）。
+function colorNameSpan(key, data, withHall) {
+  const label = withHall ? partnerDisplay(key, data) : partnerDisplayShort(key, data);
+  const color = PARTNER_COLORS[key] || "#000000";
+  return `<b style="color:${color};">${escapeHtml(label)}</b>`;
+}
+
+// 將段落的「人位 key」解析為 { partnerKey, action }：
+// 朗讀段落（read）一律是「用靈宣讀」；固定角色框則對應要點分享或結尾禱告。
+function resolveSpeakerRole(key) {
+  if (key === "partner1" || key === "partner2" || key === "partner3") {
+    return { partnerKey: key, action: "用靈宣讀" };
+  }
+  return { partnerKey: ROLE_FIXED_PARTNER[key], action: ROLE_ACTION_LABEL[key] };
+}
+
 // 段落卡片「人位」下拉選單：只列配搭1/2/3，直接顯示真實姓名
 function partnerSelectOptionsHtml(selectedKey, data) {
   return ["partner1", "partner2", "partner3"].map(key =>
@@ -937,9 +1101,12 @@ document.getElementById("bookSelect").addEventListener("change", (e) => {
   populateChapterSelect(e.target.value);
   autofillChapterTitle();
   refreshTitlePreview();
+  updateStats();
 });
-document.getElementById("chapterSelect").addEventListener("change", () => { autofillChapterTitle(); refreshTitlePreview(); });
-document.getElementById("chapterTitle").addEventListener("input", refreshTitlePreview);
+document.getElementById("chapterSelect").addEventListener("change", () => { autofillChapterTitle(); refreshTitlePreview(); updateStats(); });
+document.getElementById("chapterTitle").addEventListener("input", () => { refreshTitlePreview(); updateStats(); });
+document.getElementById("verseRef").addEventListener("input", updateStats);
+document.getElementById("verseText").addEventListener("input", updateStats);
 
 function setupNameAutocomplete(nameId, hallId, listId) {
   const input = document.getElementById(nameId);
@@ -1075,6 +1242,7 @@ function updateStats() {
     <span class="stat-pill"><span class="icon-badge">📝</span>內文總字數 <span class="val">${total}</span> 字</span>
     <span class="stat-pill"><span class="icon-badge">⏱</span>預估朗讀時間 <span class="val">${minutes}</span> 分鐘</span>
   `;
+  renderPreview();
 }
 
 /* ---------- 事件委派：輸入 / 選單 / 新增 / 刪除（含合併） ---------- */
@@ -1240,6 +1408,11 @@ document.getElementById("addSegmentBtn").addEventListener("click", () => {
    本區塊產生獨立、完整的 HTML 字串（inline 樣式），與網頁本身的
    深色／淺色主題（CSS 變數）完全無關，因此匯出的 Word 檔一律維持
    標準白底黑字排版，不受網頁佈景切換影響。
+
+   buildWordHtmlBody() 是「📄 Word 逐字稿預覽」與「匯出 .doc 檔」
+   唯一、共用的內容來源：renderPreview() 直接把它的輸出注入 A4
+   預覽頁面，buildWordDocument() 則把同一份輸出包進 Word 專用的
+   HTML envelope 後供下載——兩者保證 100% 一致，零誤差。
    ============================================================ */
 function htmlParagraphs(text, opts) {
   opts = opts || {};
@@ -1247,58 +1420,139 @@ function htmlParagraphs(text, opts) {
   const lines = (text || "").split(/\r?\n/);
   return lines.map(line => {
     const content = line.length ? escapeHtml(line) : "&nbsp;";
-    return `<p style="margin:0 0 10pt 0;font-size:11pt;line-height:1.6;${italicStyle}">${content}</p>`;
+    return `<p style="margin:0 0 8pt 0;font-size:12pt;line-height:1.6;${italicStyle}">${content}</p>`;
   }).join("\n");
 }
 
-function speakerHeadingHtml(text) {
-  return `<p style="margin:18pt 0 6pt 0;"><b><span style="background-color:#FFFF00;mso-highlight:yellow;color:#000000;font-size:12pt;padding:1pt 2pt;">${escapeHtml(text)}</span></b></p>`;
+// 人位標題行：帶專屬顏色的姓名 HTML（不 escape，因為已經是建構好的 HTML）
+// ＋純黑動作文字（如「用靈宣讀」「要點分享」）。
+function speakerHeadingHtml(nameHtml, actionText) {
+  return `<p style="margin:16pt 0 4pt 0;font-size:12pt;">${nameHtml}<span style="color:#000000;">${escapeHtml(actionText)}</span></p>`;
 }
 function sectionHeadingHtml(text) {
-  return `<p style="margin:24pt 0 10pt 0;padding-bottom:4pt;font-size:14pt;font-weight:bold;color:#2C3E50;border-bottom:1pt solid #4A6FA5;">${escapeHtml(text)}</p>`;
+  return `<p style="margin:20pt 0 8pt 0;font-size:13pt;font-weight:bold;color:#000000;">${escapeHtml(text)}</p>`;
 }
+// 固定提醒事項的純文字條列（•　開頭，全形空格，對應參考 Word 檔格式）
 function bulletLineHtml(text) {
-  return `<p style="margin:0 0 6pt 0;font-size:11pt;">• ${escapeHtml(text)}</p>`;
+  return `<p style="margin:0 0 6pt 0;font-size:12pt;">•　${escapeHtml(text)}</p>`;
+}
+// 條列內容中包含動態顏色 HTML（如姓名、粗體藍字字數／時間）時使用，不做 escape
+function bulletHtmlLine(innerHtml) {
+  return `<p style="margin:0 0 6pt 0;font-size:12pt;">•　${innerHtml}</p>`;
+}
+// 不加「•」的純文字行（如 1./a./2. 開頭的編號提醒事項）
+function plainLineHtml(text) {
+  return `<p style="margin:0 0 6pt 0;font-size:12pt;">${escapeHtml(text)}</p>`;
+}
+// 分隔線（對應參考 Word 檔中以星號分隔的視覺區隔）
+function dividerHtml() {
+  return `<hr style="border:none;border-top:1pt solid #999999;margin:14pt 0;">`;
 }
 
+/* ============================================================
+   Word 逐字稿內容主體 —— 完全依照使用者提供的參考 Word 檔
+   （20260810生命讀經共讀班規劃）之固定流程與文字結構產生：
+   主持人金鑰／共讀預備方式 1~5／本次配搭與兄長提醒／當天會前
+   預備 a~c＋1~5／聚會開始／開場提醒 1~3＋開頭禱告基本架構／
+   宣讀經文／前言回顧／各朗讀與要點分享／結尾禱告，並將篇題、
+   經節範圍、今日經節內容、分段內文動態代入固定流程對應位置。
+   ============================================================ */
 function buildWordHtmlBody(data, charCount, minutes, segs) {
   let body = "";
-  const titleText = bookTitleDisplay(data);
-  const p1 = partnerDisplay("partner1", data);
-  const p2 = partnerDisplay("partner2", data);
-  const p3 = partnerDisplay("partner3", data);
+  const bookName = data.bookName || "";
 
-  body += `<h1 style="text-align:center;color:#2C3E50;font-size:20pt;margin:0 0 6pt 0;">${escapeHtml(titleText || "生命讀經共讀班")}</h1>`;
-  body += `<p style="text-align:center;color:#4A6FA5;font-style:italic;font-size:12pt;margin:0 0 20pt 0;">${escapeHtml(data.verseRef || "")}</p>`;
+  const p1 = colorNameSpan("partner1", data, true);
+  const p2 = colorNameSpan("partner2", data, true);
+  const p3 = colorNameSpan("partner3", data, true);
+  const p1n = colorNameSpan("partner1", data, false);
 
-  body += sectionHeadingHtml("抬頭預備資訊");
-  body += bulletLineHtml(`本次配搭人位及順序：${p1}、${p2}、${p3}`);
-  body += bulletLineHtml(`本篇文本字數約 ${charCount} 字（不含標點符號與空白）。`);
-  body += bulletLineHtml(`本次共 ${segs.length} 個朗讀／分享／禱告段落，本文預估約 ${minutes} 分鐘。（以 160 字／分鐘計算）`);
+  const shareCount = segs.filter(s => s.kind === "fixed" && s.role !== "closePray").length;
 
+  // ── 主持人金鑰 ──
+  body += `<p style="margin:0 0 14pt 0;font-size:16pt;font-weight:bold;color:#000000;"> / 主持人金鑰：${HOST_KEY}</p>`;
+
+  // ── 共讀預備方式 ──
+  body += sectionHeadingHtml("共讀預備方式");
+  body += bulletLineHtml("每次由當週規劃弟兄安排以下事項：");
+  body += plainLineHtml("1.　確認本次配搭人位及順序");
+  body += plainLineHtml("2.　將本次要讀的經節與生命讀經段落貼入下方");
+  body += plainLineHtml("3.　分配朗讀段落及人位、要點分享段落及人位，以顏色區分。");
+  body += plainLineHtml("4.　檢視並調整逐字稿，看有無須修正。");
+  body += plainLineHtml("5.　確認本次字數，預估時間。如果字數小於2000字，每個人的分享或許就可以抓至少兩個點分享。");
+
+  // ── 本次配搭、預估時間、兄長提醒 ──
+  body += sectionHeadingHtml("本次配搭、預估時間、兄長提醒");
+  body += bulletHtmlLine(`本次配搭人位及順序：${p1}、${p2}、${p3}`);
+  body += bulletHtmlLine(`本篇文本字數約<b style="color:#0000FF;"> ${charCount}字</b>（不含標點符號）。（計算網頁：）`);
+  body += bulletHtmlLine(`本次安排${shareCount}次分享。包括開頭提醒及結尾禱告，生命讀經本文預估約<b style="color:#0000FF;"> ${minutes} 分鐘</b>。(以160 字/分鐘做計算)`);
+  body += bulletLineHtml("熟讀輪值範圍，在新鮮活潑的靈中朗讀信息，不機械。有些地方重讀、重讀、帶大家讀、甚至帶大家一起來背也可。");
+  body += bulletLineHtml("要點分享請精煉，共讀當日中午前繳交申言稿，並請依照申言稿內容分享交通。");
+
+  // ── 當天會前預備 ──
+  body += `<p style="margin:16pt 0 4pt 0;font-size:12pt;">${p1}<span style="color:#000000;">當天會前預備</span></p>`;
+  body += plainLineHtml("1.　請於21:45前上線");
+  body += plainLineHtml(`a.　取得主持人權限(${HOST_KEY})，並分配聯席主持人`);
+  body += plainLineHtml("b.　設定上線靜音，禁止參與者自行開啟麥克風");
+  body += plainLineHtml("c.　確認自己的視訊背景為共讀專用背板");
+  body += plainLineHtml("2.　開立分組討論室，手動選取分組，配搭弟兄們先到討論室裡有禱告，順過流程。結束後回到主會議室");
+  body += plainLineHtml("3.　分享注意事項畫面，並避免畫面遭遮擋。");
+  body += plainLineHtml("4.　於等待時間可播放聲聲不息(當日詩歌請參考Line北投大區湧流社群)");
+  body += plainLineHtml("5.　於分組結束回到主會議室後，再次確認上線靜音、禁止參與者自行開啟麥克。");
+
+  // ── 聚會開始 ──
   body += sectionHeadingHtml("聚會開始（以下為本次逐字稿文本）");
 
-  body += speakerHeadingHtml(`${p1} 用靈提醒、禱告並宣讀經文`);
-  body += htmlParagraphs(
-    `弟兄姊妹們晚安，我們準備開始今天晚上的共讀班，開頭先簡單的自我介紹，我是${p1}、我是${p2}、我是${p3}，歡迎弟兄姊妹一起上線共讀。\n1. 請弟兄姊妹更改顯示名稱為「會所－大區－小區－姓名」的格式。\n2. 請弟兄姊妹預備「恢復本聖經」及本次讀經內容，跟著我們一同進入神豐盛的生命。\n3. ${p1} 開頭禱告（請自行預備禱告內容）`
-  );
+  // 開場：用靈提醒、禱告並宣讀經文
+  body += `<p style="margin:16pt 0 4pt 0;font-size:12pt;">${p1}<span style="color:#000000;">用靈提醒、禱告並宣讀經文</span></p>`;
+  body += `<p style="margin:6pt 0 6pt 0;font-size:12pt;">弟兄姊妹們晚安，我們準備開始今天晚上的共讀班，開頭先簡單的自我介紹，我是${p1}、我是${p2}、我是${p3}，歡迎弟兄姊妹一起上線共讀。</p>`;
+  body += plainLineHtml("1.　請弟兄姊妹更改顯示名稱為「會所-大區-小區-姓名」的格式。");
+  body += `<p style="margin:0 0 6pt 0;font-size:12pt;">2.　請弟兄姊妹預備「恢復本聖經」和「${escapeHtml(bookName)}生命讀經」，跟著我們一同進入神豐盛的生命。</p>`;
+  body += plainLineHtml("3.　開頭禱告");
+  body += `<p style="margin:0 0 10pt 0;font-size:12pt;">主耶穌謝謝祢，聖別我們晚上的時間，來享受你的話語，求祢開啟智慧和啟示的靈，能夠更明白祢的心意，開通我們的耳朵能夠聽見你的說話，主耶穌讚美祢！</p>`;
 
-  body += speakerHeadingHtml(`${p1} 宣讀經文`);
-  body += htmlParagraphs(`請大家翻開恢復本聖經【${data.verseRef}】，我們可以同聲宣讀今日的經節～`);
+  body += dividerHtml();
+
+  // 宣讀經文
+  body += `<p style="margin:16pt 0 4pt 0;font-size:12pt;">${p1n}<span style="color:#000000;">宣讀經文</span></p>`;
+  body += `<p style="margin:0 0 8pt 0;font-size:12pt;">請大家翻開恢復本聖經【${escapeHtml(data.verseRef || "")}】，我們可以同聲宣讀</p>`;
   body += htmlParagraphs(data.verseText);
 
-  body += speakerHeadingHtml(`${p1} 前言回顧與連結`);
-  body += htmlParagraphs("（請主持人依當日情況，自行預備本次前言回顧，並連結今日經節與綱要內容）");
+  // 前言回顧（不帶任何填充提示文字，留白由主持人當日自行預備交通，
+  // 對應參考 Word 檔中此標題下方完全空白、無任何佔位文字的排版）
+  body += `<p style="margin:16pt 0 4pt 0;font-size:12pt;">${p1n}<span style="color:#000000;">前言回顧</span></p>`;
 
+  body += dividerHtml();
+
+  // 朗讀／要點分享／結尾禱告段落：篇題僅插入於第一個朗讀段落內文之前，
+  // 固定角色框（要點分享／結尾禱告）僅顯示標題，不帶任何填充提示文字。
+  let firstReadDone = false;
   segs.forEach(seg => {
     const key = seg.kind === "fixed" ? seg.role : seg.speaker;
-    const text = seg.kind === "fixed" ? FIXED_PLACEHOLDER_TEXT[seg.role] : seg.text;
-    const heading = speakerHeadingText(key, data);
-    body += speakerHeadingHtml(heading);
-    body += htmlParagraphs(text, { italics: seg.kind === "fixed" });
+    const { partnerKey, action } = resolveSpeakerRole(key);
+    const nameHtml = colorNameSpan(partnerKey, data, false);
+    body += speakerHeadingHtml(nameHtml, action);
+    if (seg.kind === "read") {
+      let text = seg.text || "";
+      if (!firstReadDone) {
+        if (data.chapterTitle) text = data.chapterTitle + "\n\n" + text;
+        firstReadDone = true;
+      }
+      body += htmlParagraphs(text);
+    }
   });
 
   return body;
+}
+
+// 網頁「📄 Word 逐字稿預覽」：與匯出 .doc 檔共用同一份 buildWordHtmlBody()，
+// 由 updateStats() 在任何欄位或段落資料變動時同步呼叫，達到 0 秒即時同步。
+function renderPreview() {
+  const pageEl = document.getElementById("previewPage");
+  if (!pageEl) return;
+  const data = getFormData();
+  const total = segments.filter(s => s.kind === "read").reduce((sum, s) => sum + countChars(s.text), 0);
+  const minutes = estimateMinutes(total);
+  pageEl.innerHTML = buildWordHtmlBody(data, total, minutes, segments);
 }
 
 function buildWordDocument(data, charCount, minutes, segs) {
@@ -1320,7 +1574,7 @@ function buildWordDocument(data, charCount, minutes, segs) {
 <![endif]-->
 <style>
   @page { size: 21cm 29.7cm; margin: 2.5cm 2cm; }
-  body { font-family: "Microsoft JhengHei", "PMingLiU", "Noto Sans TC", sans-serif; font-size: 11pt; color:#333333; line-height:1.6; background:#ffffff; }
+  body { font-family: "Microsoft JhengHei", "PMingLiU", "Noto Sans TC", sans-serif; font-size: 12pt; color:#333333; line-height:1.6; background:#ffffff; }
 </style>
 </head>
 <body>
@@ -1375,10 +1629,11 @@ function generateAll() {
   const total = segments.filter(s => s.kind === "read").reduce((sum, s) => sum + countChars(s.text), 0);
   const minutes = estimateMinutes(total);
 
-  const btn = document.getElementById("generateBtn");
-  const originalLabel = btn.innerHTML;
-  btn.disabled = true;
-  btn.innerHTML = "⏳ 產生中，請稍候...";
+  // 編輯頁與預覽頁各有一顆觸發按鈕，兩者共用同一個 generateAll()，
+  // 無論由哪一顆按鈕觸發，皆同步顯示讀取中狀態，體驗一致。
+  const btns = [document.getElementById("generateBtn"), document.getElementById("previewGenerateBtn")].filter(Boolean);
+  const originalLabels = btns.map(b => b.innerHTML);
+  btns.forEach(b => { b.disabled = true; b.innerHTML = "⏳ 產生中，請稍候..."; });
 
   try {
     const htmlString = buildWordDocument(data, total, minutes, segments);
@@ -1390,8 +1645,7 @@ function generateAll() {
     console.error(err);
     showAlert("產生 Word 檔時發生錯誤：" + err.message);
   } finally {
-    btn.disabled = false;
-    btn.innerHTML = originalLabel;
+    btns.forEach((b, i) => { b.disabled = false; b.innerHTML = originalLabels[i]; });
   }
 }
 </script>
