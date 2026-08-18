@@ -23,9 +23,9 @@
   選取「上」或「下」都會帶出同一份篇名，仍可依實際經文範圍自行修改。
 
   V9 更新：
-  1. 新增固定於畫面（隨捲動）的頁面模式切換籤：✍️內文編排（編輯，預設）／
-     📄 Word 逐字稿預覽。預覽頁模擬 A4 紙、Word 樣式字體與排版，並「即時同步」
-     所有輸入欄位與段落資料——實際作法是讓網頁預覽與匯出的 .doc 檔共用同一個
+  1. 新增頁面模式切換籤：✍️內文編排（編輯，預設）／📄 Word 逐字稿預覽。
+     預覽頁模擬 A4 紙、Word 樣式字體與排版，並「即時同步」所有輸入欄位與
+     段落資料——實際作法是讓網頁預覽與匯出的 .doc 檔共用同一個
      buildWordHtmlBody() 產生的 HTML 字串，因此兩者的內容與排版保證 100%一致，
      不會有任何落差。
   2. 完全依照使用者提供的參考 Word 檔（20260810生命讀經共讀班規劃）重寫匯出內容
@@ -34,6 +34,32 @@
      保留，並將篇題、經節範圍、今日經節內容、分段內文動態代入對應位置。
   3. 配搭 1/2/3 專屬高對比深色（非淺色）粗體標記：凡逐字稿中出現對應弟兄的
      姓名／人位標籤，一律套用其專屬顏色，網頁 Word 預覽與匯出 .doc 檔完全同步。
+
+  V10 更新：修正「頁面模式切換籤」蓋住標題文字的重大排版錯誤——V9 的作法是用
+  position:fixed 把切換籤固定在整個瀏覽器視窗頂端，結果直接蓋在 header 標題
+  文字上面（見上方第 1 點）。V10 改回一般文件流（不再 fixed），並移到 header
+  正下方、以負 margin-top 讓它像浮貼卡榫一樣貼在 header 下緣，捲動頁面時會
+  跟著內容一起移動，不會再擋字。同時移除了預覽畫面裡多餘的「⬅️ 回到編輯」
+  按鈕（與頂部「✍️ 內文編排」分頁籤功能完全重複），現在僅靠頂部分頁籤在
+  編輯／預覽兩個畫面間切換，介面更精簡一致。
+
+  V11 更新：V10 把分頁籤改成一般文件流後，滾動時會跟著捲走，使用者往下
+  捲動就再也點不到「內文編排／Word 逐字稿預覽」了。V11 改用
+  position: sticky（而非 fixed 或普通文件流）：頁面在最頂端時，分頁籤是
+  .app-header 裡的最後一排內容，落在漸層色塊範圍內、offline-tag 下方，
+  不會蓋到標題文字；往下捲動、header 捲出畫面後，分頁籤會貼齊視窗頂端並
+  保持可見可點，效果等同 V9 的固定分頁籤，但不會有 V10/V9 各自的缺點。
+
+  V12 更新：發現 V11 的 position: sticky 有個限制沒考慮到——sticky 元素
+  的貼頂範圍會被它的父層 .app-header 限制住，一旦 header（高度只有一百
+  多像素）整個捲出畫面，裡面的 sticky 分頁籤也會被一起帶走、直接消失，
+  往下捲動後就再也看不到、點不到了。V12 改用 JS 判斷捲動位置：分頁籤
+  預設仍維持一般文件流、自然落在 header 內（頁面在最頂端時的外觀跟 V11
+  完全一樣），但一旦捲動超過分頁籤原本所在的高度，就會加上 .is-docked
+  這個 class，切換成 position: fixed 貼齊視窗頂端置中，不再受父層高度
+  限制，才能真正做到「捲到多下面，分頁籤都會一直保持在最上方」。
+  另外，分頁籤外面加了一層 .mode-toggle-slot 占位容器，並由 JS 鎖定
+  其高度，避免切換 fixed 的瞬間 header 高度改變，造成下方卡片跳動。
 -->
 
 <style>
@@ -137,21 +163,44 @@
   html[data-theme="light"] .theme-toggle { background: rgba(31,36,48,.08); border-color: rgba(31,36,48,.14); color: var(--accent-dark); }
 
   /* ---------- 頁面模式切換籤（編輯／Word 預覽，固定於畫面隨捲動） ---------- */
+  .mode-toggle-slot {
+    /* V12：占位容器，高度由 JS 一次性鎖定（見下方腳本），確保分頁籤
+       切換成 position: fixed 的瞬間，header 高度不會突然改變，
+       下方卡片內容不會跳動。 */
+    min-height: 2.6rem;
+  }
   .mode-toggle-bar {
-    position: fixed;
-    top: 1rem;
-    left: 50%;
-    transform: translateX(-50%);
-    z-index: 80;
+    /* V12：改用 JS 判斷捲動位置＋.is-docked class 手動切換，取代
+       position: sticky。原因：sticky 的「貼頂」範圍會被它的父層
+       .app-header 限制住——一旦 header 整個捲出畫面，sticky 子元素
+       也會被一起帶走而消失，這正是 V11 往下捲動後分頁籤不見的原因。
+       預設（未捲動、未 docked）時，維持一般文件流，自然落在 header
+       內、offline-tag 下方，不會蓋到標題文字。 */
+    position: relative;
+    z-index: 50;
     display: flex;
+    justify-content: center;
+    width: max-content;
+    margin: 1rem auto 0;
     gap: .25rem;
-    background: rgba(255,255,255,.12);
+    background: rgba(255,255,255,.14);
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
     border: 1px solid rgba(255,255,255,.28);
     border-radius: 2rem;
     padding: .3rem;
-    box-shadow: 0 6px 18px rgba(0,0,0,.28);
+    box-shadow: 0 6px 18px rgba(2,6,23,.32);
+    transition: box-shadow .2s;
+  }
+  /* 捲動超過分頁籤原本位置後，JS 會加上這個 class：改成 fixed 貼齊
+     視窗頂端置中，不受 .app-header 高度限制，真正做到「保持在最上方」。 */
+  .mode-toggle-bar.is-docked {
+    position: fixed;
+    top: .75rem;
+    left: 50%;
+    transform: translateX(-50%);
+    margin: 0;
+    box-shadow: 0 10px 28px rgba(2,6,23,.45);
   }
   html[data-theme="light"] .mode-toggle-bar { background: rgba(31,36,48,.08); border-color: rgba(31,36,48,.14); }
   .mode-tab {
@@ -174,7 +223,7 @@
   }
 
   /* ---------- Word 逐字稿預覽（模擬 A4 紙張） ---------- */
-  #previewView { max-width: 900px; margin: 0 auto; padding: 5.2rem 1rem 3rem; }
+  #previewView { max-width: 900px; margin: 0 auto; padding: 1.4rem 1rem 3rem; }
   .preview-toolbar {
     display: flex; justify-content: center; align-items: center; gap: .8rem;
     margin-bottom: 1rem; flex-wrap: wrap;
@@ -205,7 +254,7 @@
   .app-header {
     background: var(--header-grad);
     color: #fff;
-    padding: 2.2rem 1.2rem 2rem;
+    padding: 2.2rem 1.2rem 1.4rem;
     border-radius: 0 0 1.4rem 1.4rem;
     margin-bottom: 1.75rem;
     box-shadow: 0 16px 40px rgba(79,70,229,.28), 0 0 60px rgba(34,211,238,.10);
@@ -509,18 +558,20 @@
 
 <button type="button" id="themeToggle" class="theme-toggle" title="切換深色／淺色模式" aria-label="切換深色／淺色模式">🌙</button>
 
-<div class="mode-toggle-bar" role="tablist" aria-label="頁面模式切換">
-  <button type="button" class="mode-tab active" id="tabEdit" data-mode="edit" role="tab" aria-selected="true">✍️ 內文編排</button>
-  <button type="button" class="mode-tab" id="tabPreview" data-mode="preview" role="tab" aria-selected="false">📄 Word 逐字稿預覽</button>
-</div>
-
-<div id="editView">
-
 <div class="app-header text-center">
   <h1>📖 生命讀經共讀班｜逐字稿段落編輯 &amp; Word 產生器</h1>
   <p>選好書卷篇數，貼上內文智慧分段，拖曳調整順序後，直接產生排版好的 Word（.doc）逐字稿</p>
   <span class="offline-tag">✅ 純離線運作，不依賴任何外部套件或網路連線</span>
+
+  <div class="mode-toggle-slot">
+    <div class="mode-toggle-bar" role="tablist" aria-label="頁面模式切換">
+      <button type="button" class="mode-tab active" id="tabEdit" data-mode="edit" role="tab" aria-selected="true">✍️ 內文編排</button>
+      <button type="button" class="mode-tab" id="tabPreview" data-mode="preview" role="tab" aria-selected="false">📄 Word 逐字稿預覽</button>
+    </div>
+  </div>
 </div>
+
+<div id="editView">
 
 <div class="container">
 
@@ -631,7 +682,6 @@
 
 <div id="previewView" style="display:none;">
   <div class="preview-toolbar">
-    <button type="button" id="backToEditBtn" class="btn-secondary">⬅️ 回到編輯</button>
     <button type="button" id="previewGenerateBtn" class="btn-export">⚙️ 匯出 Word (.doc) 檔</button>
   </div>
   <div class="preview-note">以下為即時同步的 Word 逐字稿預覽，內容與匯出的 .doc 檔完全一致</div>
@@ -684,8 +734,65 @@ function setPageMode(mode) {
 }
 document.getElementById("tabEdit").addEventListener("click", function () { setPageMode("edit"); });
 document.getElementById("tabPreview").addEventListener("click", function () { setPageMode("preview"); });
-document.getElementById("backToEditBtn").addEventListener("click", function () { setPageMode("edit"); });
 document.getElementById("previewGenerateBtn").addEventListener("click", function () { generateAll(); });
+
+/* ============================================================
+   V12：分頁籤「捲動後貼頂」邏輯
+   ------------------------------------------------------------
+   position: sticky 的貼頂範圍會被父層 .app-header 限制住，一旦
+   header 整個捲出畫面，sticky 子元素也會被一起帶走而消失。這裡改用
+   JS 量測分頁籤在「未 docked」狀態下、距離文件頂端的原始高度作為
+   門檻，捲動超過門檻就加上 .is-docked（切換成 position: fixed 貼齊
+   視窗頂端），退回門檻以內就移除，讓它退回原本在 header 裡的位置。
+   ============================================================ */
+(function () {
+  var slot = document.querySelector(".mode-toggle-slot");
+  var bar = document.querySelector(".mode-toggle-bar");
+  if (!slot || !bar) return;
+  var dockThreshold = 0;
+
+  // 鎖定占位容器的高度：量測「分頁籤在一般文件流中」的實際高度，
+  // 固定寫死成 px，之後不論分頁籤是否 docked（fixed），這個容器都會
+  // 一直佔用同樣高度，header 與下方卡片就不會跳動。
+  function lockSlotHeight() {
+    slot.style.height = "auto";
+    var h = slot.getBoundingClientRect().height;
+    slot.style.height = h + "px";
+  }
+
+  // 用「占位容器」的位置量測捲動門檻，而不是分頁籤本身——因為占位
+  // 容器的位置永遠不受分頁籤 docked 狀態影響，量測結果才會穩定。
+  function measureThreshold() {
+    var scrollY = window.scrollY || document.documentElement.scrollTop || 0;
+    dockThreshold = slot.getBoundingClientRect().top + scrollY;
+  }
+
+  function updateDockState() {
+    var scrollY = window.scrollY || document.documentElement.scrollTop || 0;
+    bar.classList.toggle("is-docked", scrollY >= dockThreshold);
+  }
+
+  var resizeTimer = null;
+  window.addEventListener("resize", function () {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(function () {
+      lockSlotHeight();
+      measureThreshold();
+      updateDockState();
+    }, 150);
+  });
+
+  var scrollTicking = false;
+  window.addEventListener("scroll", function () {
+    if (scrollTicking) return;
+    scrollTicking = true;
+    requestAnimationFrame(function () { updateDockState(); scrollTicking = false; });
+  }, { passive: true });
+
+  lockSlotHeight();
+  measureThreshold();
+  updateDockState();
+})();
 
 /* ============================================================
    常數：66 卷生命讀經書名與篇數（逐一比對 lsmchinese.org 官方
