@@ -254,10 +254,10 @@
     border-color: rgba(255,255,255,.4);
   }
   .mode-tab.active {
-    /* V16：改用燙金版配色（#B8912A → #D4AF37 燙金漸層＋深棕黑文字），
-       僅調整這顆分頁籤本身，不影響全站其他地方共用的墨綠＋翡翠綠 --accent。 */
-    background: linear-gradient(135deg, #B8912A, #D4AF37);
-    color: #1A1405;
+    /* V13：改成金→綠漸層，呼應書背相片的深綠皮革與金字，
+       僅調整這顆分頁籤本身，不影響全站其他地方共用的 --accent。 */
+    background: linear-gradient(135deg, #d9a94e, #22c55e);
+    color: #fff;
     box-shadow: 0 4px 14px rgba(217,169,78,.45);
   }
 
@@ -362,11 +362,11 @@
   .link-btn {
     display: inline-flex;
     align-items: center;
-    gap: .35rem;
-    font-size: .78rem;
-    font-weight: 700;
-    padding: .4rem .85rem;
-    border-radius: 999px;
+    gap: .3rem;
+    font-size: .76rem;
+    font-weight: 600;
+    padding: .32rem .7rem;
+    border-radius: 1rem;
     text-decoration: none;
     white-space: nowrap;
     border: 1px solid var(--line);
@@ -375,7 +375,6 @@
     transition: background .15s, border-color .15s, color .15s, transform .1s;
   }
   .link-btn:hover { background: var(--accent-soft); border-color: var(--accent); color: var(--accent-dark); transform: translateY(-1px); }
-  .link-btn .link-btn-icon { font-size: .92rem; line-height: 1; }
   .card-body { padding: 1.35rem; }
 
   label.form-label {
@@ -412,28 +411,6 @@
     margin-top: .35rem;
     font-size: .78rem;
     color: var(--muted);
-  }
-  .second-half-check {
-    display: inline-flex;
-    align-items: center;
-    gap: .4rem;
-    margin-left: .3rem;
-    padding: .35rem .7rem;
-    border-radius: .6rem;
-    border: 1px solid var(--line);
-    background: var(--input-bg);
-    font-size: .85rem;
-    font-weight: 600;
-    color: var(--muted);
-    cursor: pointer;
-    user-select: none;
-    white-space: nowrap;
-  }
-  .second-half-check input[type="checkbox"] {
-    width: 1.05rem;
-    height: 1.05rem;
-    accent-color: var(--accent);
-    cursor: pointer;
   }
 
   /* ---------- 姓名自動完成 ---------- */
@@ -667,6 +644,7 @@
 <div class="app-header text-center">
   <h1>📖 生命讀經共讀班｜逐字稿段落編輯 &amp; Word 產生器</h1>
   <p>選好書卷篇數，貼上內文智慧分段，拖曳調整順序後，直接產生排版好的 Word（.doc）逐字稿</p>
+  <span class="offline-tag">✅ 純離線運作，不依賴任何外部套件或網路連線</span>
 
   <div class="mode-toggle-slot">
     <div class="mode-toggle-bar" role="tablist" aria-label="頁面模式切換">
@@ -698,11 +676,8 @@
           </select>
           <span class="fixed-text">篇　篇名</span>
           <input type="text" class="form-control" id="chapterTitle">
-          <label class="second-half-check" title="本篇因篇幅較長分兩次共讀，這次讀的若是後半段內容，請勾選">
-            <input type="checkbox" id="secondHalf"> 後半段
-          </label>
         </div>
-        <div class="field-hint">若本篇分兩次共讀、這次讀的是後半段內容，請勾選「後半段」，篇題預覽與生成的逐字稿／預覽都會自動加註</div>
+        <div class="field-hint" id="chapterTitleHint">請先選擇書卷與篇數，將自動帶入官方篇名（如尚未收錄於資料庫，請自行輸入）</div>
         <div class="title-preview" id="titlePreview">預覽：（尚未填寫）</div>
       </div>
       <div class="mb-3">
@@ -712,7 +687,7 @@
       </div>
       <div class="row">
         <div class="col-3 mb-3">
-          <label class="form-label">配搭 1 姓名（主持人）</label>
+          <label class="form-label">配搭 1（主持人）姓名</label>
           <div class="autocomplete-wrap">
             <input type="text" class="form-control mb-2" id="partner1Name" autocomplete="off">
             <div class="autocomplete-list" id="partner1NameList"></div>
@@ -721,7 +696,7 @@
           <input type="text" class="form-control" id="partner1Hall">
         </div>
         <div class="col-3 mb-3">
-          <label class="form-label">配搭 2 姓名（中間分享）</label>
+          <label class="form-label">配搭 2 姓名</label>
           <div class="autocomplete-wrap">
             <input type="text" class="form-control mb-2" id="partner2Name" autocomplete="off">
             <div class="autocomplete-list" id="partner2NameList"></div>
@@ -730,7 +705,7 @@
           <input type="text" class="form-control" id="partner2Hall">
         </div>
         <div class="col-3 mb-3">
-          <label class="form-label">配搭 3 姓名（結尾分享）</label>
+          <label class="form-label">配搭 3 姓名</label>
           <div class="autocomplete-wrap">
             <input type="text" class="form-control mb-2" id="partner3Name" autocomplete="off">
             <div class="autocomplete-list" id="partner3NameList"></div>
@@ -739,6 +714,7 @@
           <input type="text" class="form-control" id="partner3Hall">
         </div>
       </div>
+      <div class="title-preview">💡 中間分享／結尾分享／結尾禱告會自動以固定框顯示在段落卡片中，直接帶入對應姓名；內容由該配搭當日自行預備，此工具僅用於安排朗讀段落分配，這三個固定框不計入段落編號、亦無法拖曳調整位置。</div>
     </div>
   </div>
 
@@ -747,8 +723,8 @@
     <div class="card-header card-header-flex">
       <span>② 今日經節</span>
       <span class="link-btn-group">
-        <a class="link-btn" href="https://recoveryversion.twgbr.org/" target="_blank" rel="noopener noreferrer" title="開啟恢復本聖經網頁版，方便複製經節"><span class="link-btn-icon">📖</span>恢復本聖經（網頁版）</a>
-        <a class="link-btn" href="https://line.twgbr.org/recoveryversion/bible/" target="_blank" rel="noopener noreferrer" title="開啟恢復本聖經 Line 版"><span class="link-btn-icon">📱</span>恢復本聖經（LINE版）</a>
+        <a class="link-btn" href="https://recoveryversion.twgbr.org/" target="_blank" rel="noopener noreferrer" title="開啟恢復本聖經網頁版，方便複製經節">🔗 恢復本聖經網頁</a>
+        <a class="link-btn" href="https://line.twgbr.org/recoveryversion/bible/" target="_blank" rel="noopener noreferrer" title="開啟恢復本聖經 Line 版">💬 恢復本聖經 Line</a>
       </span>
     </div>
     <div class="card-body">
@@ -765,8 +741,8 @@
     <div class="card-header card-header-flex">
       <span>③ 內文與段落編輯區</span>
       <span class="link-btn-group">
-        <a class="link-btn" href="https://www.lsmchinese.org/lifestudy/index.html" target="_blank" rel="noopener noreferrer" title="開啟生命讀經網頁版，方便複製內文"><span class="link-btn-icon">📚</span>生命讀經（官網版）</a>
-        <a class="link-btn" href="https://line.twgbr.org/life-study/" target="_blank" rel="noopener noreferrer" title="開啟生命讀經 Line 版"><span class="link-btn-icon">📱</span>生命讀經（LINE版）</a>
+        <a class="link-btn" href="https://www.lsmchinese.org/lifestudy/index.html" target="_blank" rel="noopener noreferrer" title="開啟生命讀經網頁版，方便複製內文">🔗 生命讀經網頁</a>
+        <a class="link-btn" href="https://line.twgbr.org/life-study/" target="_blank" rel="noopener noreferrer" title="開啟生命讀經 Line 版">💬 生命讀經 Line</a>
       </span>
     </div>
     <div class="card-body">
@@ -794,7 +770,7 @@
     <button id="generateBtn" onclick="generateAll()">⚙️ 產生 Word 檔</button>
   </div>
 
-  <footer class="app-footer">匯出的 Word 檔一律採用標準白底黑字排版，不受本頁深色／淺色主題影響。</footer>
+  <footer class="app-footer">所有資料僅於您的瀏覽器端處理，不會上傳至任何伺服器；本頁不需要網路連線即可產生 Word 檔。<br>前言回顧與連結非規劃者的工作，故本頁不提供輸入欄位，將於匯出檔中留白提示由主持人當日自行預備。<br>匯出的 Word 檔一律採用標準白底黑字排版，不受本頁深色／淺色主題影響。</footer>
 </div>
 
 </div>
@@ -1167,7 +1143,6 @@ function bookTitleDisplay(data) {
   let title = `${data.bookName || ""}生命讀經`;
   if (chapter) title += `－第${chapter}篇`;
   if (data.chapterTitle) title += ` ${data.chapterTitle}`;
-  if (data.secondHalf) title += `（後半段）`;
   return title.trim();
 }
 
@@ -1183,8 +1158,7 @@ function getFormData() {
     partner2Hall: document.getElementById("partner2Hall").value.trim(),
     partner3Name: document.getElementById("partner3Name").value.trim(),
     partner3Hall: document.getElementById("partner3Hall").value.trim(),
-    verseText: document.getElementById("verseText").value.trim(),
-    secondHalf: document.getElementById("secondHalf").checked
+    verseText: document.getElementById("verseText").value.trim()
   };
 }
 
@@ -1302,9 +1276,15 @@ function populateChapterSelect(bookName) {
 function autofillChapterTitle() {
   const book = document.getElementById("bookSelect").value;
   const chapNum = document.getElementById("chapterSelect").value;
+  const hintEl = document.getElementById("chapterTitleHint");
   const titles = TITLE_DB[book];
   if (titles && chapNum && titles[Number(chapNum) - 1]) {
     document.getElementById("chapterTitle").value = titles[Number(chapNum) - 1];
+    hintEl.textContent = "✅ 已自動帶入官方篇名，可視需要自行修改";
+  } else if (book) {
+    hintEl.textContent = "⚠️ 此書卷篇名尚未收錄於資料庫，請手動輸入篇名";
+  } else {
+    hintEl.textContent = "請先選擇書卷與篇數，將自動帶入官方篇名（如尚未收錄於資料庫，請自行輸入）";
   }
 }
 
@@ -1312,8 +1292,7 @@ function refreshTitlePreview() {
   const data = {
     bookName: document.getElementById("bookSelect").value.trim(),
     chapterNum: document.getElementById("chapterSelect").value.trim(),
-    chapterTitle: document.getElementById("chapterTitle").value.trim(),
-    secondHalf: document.getElementById("secondHalf").checked
+    chapterTitle: document.getElementById("chapterTitle").value.trim()
   };
   const display = bookTitleDisplay(data);
   document.getElementById("titlePreview").innerHTML =
@@ -1328,7 +1307,6 @@ document.getElementById("bookSelect").addEventListener("change", (e) => {
 });
 document.getElementById("chapterSelect").addEventListener("change", () => { autofillChapterTitle(); refreshTitlePreview(); updateStats(); });
 document.getElementById("chapterTitle").addEventListener("input", () => { refreshTitlePreview(); updateStats(); });
-document.getElementById("secondHalf").addEventListener("change", () => { refreshTitlePreview(); updateStats(); });
 document.getElementById("verseRef").addEventListener("input", updateStats);
 document.getElementById("verseText").addEventListener("input", updateStats);
 
@@ -1739,9 +1717,8 @@ function buildWordHtmlBody(data, charCount, minutes, segs) {
   // 宣讀經文
   const chapterChiForIntro = formatChapterNum(data.chapterNum);
   const introTitle = `${bookName}生命讀經` + (chapterChiForIntro ? ` 第${chapterChiForIntro}篇 ` : "");
-  const secondHalfSuffix = data.secondHalf ? "的後半段" : "";
   body += `<p style="margin:16pt 0 4pt 0;font-size:12pt;">${p1n}<span style="color:#000000;">宣讀經文</span></p>`;
-  body += `<p style="margin:0 0 8pt 0;font-size:12pt;">我們今天要進入【${escapeHtml(introTitle)}】${secondHalfSuffix}。在進入之前，請大家先翻到恢復本聖經【${escapeHtml(data.verseRef || "")}】，我們可以同聲宣讀今日的經節～</p>`;
+  body += `<p style="margin:0 0 8pt 0;font-size:12pt;">我們今天要進入【${escapeHtml(introTitle)}】。在進入之前，請大家先翻到恢復本聖經【${escapeHtml(data.verseRef || "")}】，我們可以同聲宣讀今日的經節～</p>`;
   body += htmlParagraphs(data.verseText);
 
   // 前言回顧（不帶任何填充提示文字，留白由主持人當日自行預備交通，

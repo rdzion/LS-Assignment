@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>生命讀經共讀班｜逐字稿自動分配 &amp; Word 產生器</title>
+
+<!-- Bootstrap 5 -->
+<link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/css/bootstrap.min.css" rel="stylesheet">
+<!-- docx.js (瀏覽器端產生 .docx) -->
+<script src="https://unpkg.com/docx@8.5.0/build/index.js"></script>
+<!-- FileSaver.js (瀏覽器端下載檔案) -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+
+<style>
+  body {
+    background: #f4f6f9;
+    font-family: "Microsoft JhengHei", "Noto Sans TC", system-ui, -apple-system, sans-serif;
+  }
+  .app-header {
+    background: linear-gradient(135deg, #2c3e50 0%, #4a6fa5 100%);
+    color: #fff;
+    padding: 2rem 1rem;
+    border-radius: 0 0 1rem 1rem;
+    margin-bottom: 1.5rem;
+  }
+  .app-header h1 { font-size: 1.6rem; font-weight: 700; margin-bottom: .25rem; }
+  .app-header p { margin: 0; opacity: .85; font-size: .95rem; }
+  .card {
+    border: none;
+    border-radius: .75rem;
+    box-shadow: 0 2px 10px rgba(0,0,0,.06);
+  }
+  .card-header {
+    background: #fff;
+    border-bottom: 1px solid #eef0f3;
+    font-weight: 700;
+    color: #2c3e50;
+    border-radius: .75rem .75rem 0 0 !important;
+  }
+  label.form-label { font-weight: 600; color: #34495e; font-size: .9rem; }
+  textarea.form-control { font-size: .92rem; line-height: 1.6; }
+  .stat-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: .4rem;
+    background: #eef2f8;
+    color: #2c3e50;
+    border-radius: 2rem;
+    padding: .4rem .9rem;
+    font-size: .88rem;
+    font-weight: 600;
+    margin-right: .5rem;
+    margin-bottom: .5rem;
+  }
+  .stat-pill .val { color: #4a6fa5; font-size: 1.05rem; }
+  #generateBtn {
+    background: #4a6fa5;
+    border: none;
+    font-weight: 700;
+    padding: .75rem 1.5rem;
+    border-radius: .6rem;
+  }
+  #generateBtn:hover { background: #3a5a8a; }
+  .preview-chunk {
+    background: #fbfbfd;
+    border: 1px solid #e7eaf0;
+    border-left: 4px solid #4a6fa5;
+    border-radius: .4rem;
+    padding: .7rem .9rem;
+    margin-bottom: .6rem;
+    font-size: .85rem;
+    color: #444;
+  }
+  .preview-chunk .speaker-tag {
+    font-weight: 700;
+    color: #2c3e50;
+    display: block;
+    margin-bottom: .25rem;
+    font-size: .85rem;
+  }
+  .preview-chunk .chunk-text {
+    white-space: pre-wrap;
+    max-height: 6.5rem;
+    overflow-y: auto;
+    color: #555;
+  }
+  .section-divider {
+    text-align: center;
+    color: #aab4c0;
+    margin: 1rem 0;
+    font-size: .8rem;
+    letter-spacing: .2rem;
+  }
+  footer.app-footer {
+    text-align: center;
+    color: #98a2ae;
+    font-size: .8rem;
+    margin: 2rem 0 1rem;
+  }
+  #alertBox { display: none; }
+</style>
+</head>
+<body>
+
+<div class="app-header text-center">
+  <h1>📖 生命讀經共讀班｜逐字稿自動分配 &amp; Word 產生器</h1>
+  <p>填入本次共讀資料，系統將自動計算字數、預估時間、平均切分朗讀段落，並直接產生排版好的 Word 逐字稿</p>
+</div>
+
+<div class="container" style="max-width: 900px;">
+
+  <div id="alertBox" class="alert alert-danger" role="alert"></div>
+
+  <!-- 基本資料 -->
+  <div class="card mb-3">
+    <div class="card-header">① 基本資料</div>
+    <div class="card-body">
+      <div class="mb-3">
+        <label class="form-label">共讀書名與篇題</label>
+        <input type="text" class="form-control" id="bookTitle" placeholder="例如：啟示錄生命讀經—第四十三篇 從海中上來的獸">
+      </div>
+      <div class="mb-3">
+        <label class="form-label">聖經經節</label>
+        <input type="text" class="form-control" id="verseRef" placeholder="例如：啟示錄第十三章2~4節">
+      </div>
+      <div class="row">
+        <div class="col-md-4 mb-3">
+          <label class="form-label">配搭 1（主持人）姓名／會所</label>
+          <input type="text" class="form-control" id="partner1" placeholder="例如：79會所李福軒弟兄">
+        </div>
+        <div class="col-md-4 mb-3">
+          <label class="form-label">配搭 2 姓名／會所</label>
+          <input type="text" class="form-control" id="partner2" placeholder="例如：81會所陳柏安弟兄">
+        </div>
+        <div class="col-md-4 mb-3">
+          <label class="form-label">配搭 3 姓名／會所</label>
+          <input type="text" class="form-control" id="partner3" placeholder="例如：112會所周博恩弟兄">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 經文與前言 -->
+  <div class="card mb-3">
+    <div class="card-header">② 經文與前言</div>
+    <div class="card-body">
+      <div class="mb-3">
+        <label class="form-label">今日經文內容（多行，逐節貼上）</label>
+        <textarea class="form-control" id="verseText" rows="4" placeholder="例如：&#10;13:2 我所看見的獸，形狀像豹……&#10;13:3 獸的七頭中，有一頭似乎被殺至死……"></textarea>
+      </div>
+      <div class="mb-3">
+        <label class="form-label">前言回顧與連結</label>
+        <textarea class="form-control" id="introText" rows="4" placeholder="貼上前言回顧與今日經節、綱要的連結內容"></textarea>
+      </div>
+    </div>
+  </div>
+
+  <!-- 生命讀經內文 -->
+  <div class="card mb-3">
+    <div class="card-header">③ 生命讀經完整內文</div>
+    <div class="card-body">
+      <div class="mb-2">
+        <label class="form-label">生命讀經完整內文（請按段落換行貼上，系統會自動平均切分為 6 段）</label>
+        <textarea class="form-control" id="mainText" rows="14" placeholder="請將本篇生命讀經全文貼於此處，段落之間請以換行分隔"></textarea>
+      </div>
+      <div id="statsArea" class="mt-3"></div>
+    </div>
+  </div>
+
+  <!-- 分配預覽 -->
+  <div class="card mb-3" id="previewCard" style="display:none;">
+    <div class="card-header">④ 分配預覽</div>
+    <div class="card-body" id="previewArea"></div>
+  </div>
+
+  <div class="d-flex justify-content-center mb-4">
+    <button id="generateBtn" class="btn btn-lg text-white" onclick="generateAll()">
+      ⚙️ 自動分配並產生 Word 檔
+    </button>
+  </div>
+
+  <footer class="app-footer">所有資料僅於您的瀏覽器端處理，不會上傳至任何伺服器。</footer>
+</div>
+
+<script>
+/* ============================================================
+   工具函式
+   ============================================================ */
+
+// 計算字數：排除標點符號（含中文標點）與所有空白字元
+function countChars(text) {
+  if (!text) return 0;
+  const stripped = text.replace(/[\s\p{P}\p{S}]/gu, "");
+  return stripped.length;
+}
+
+// 預估時間（分鐘）＝ 字數 / 160，四捨五入
+function estimateMinutes(charCount) {
+  return Math.round(charCount / 160);
+}
+
+// 將內文依「換行」切成段落，過濾空白行
+function splitParagraphs(text) {
+  return text
+    .split(/\r?\n/)
+    .map(s => s.trim())
+    .filter(s => s.length > 0);
+}
+
+// 將段落陣列平均分配為 numChunks 個區塊（盡量平均，餘數依序分配給前面的區塊）
+function splitIntoChunks(paragraphs, numChunks) {
+  const chunks = Array.from({ length: numChunks }, () => []);
+  const total = paragraphs.length;
+
+  if (total === 0) {
+    return chunks.map(() => "");
+  }
+
+  // 若段落數少於區塊數，直接一段落一區塊，其餘留空
+  const base = Math.floor(total / numChunks);
+  const remainder = total % numChunks;
+
+  let idx = 0;
+  for (let i = 0; i < numChunks; i++) {
+    let count = base + (i < remainder ? 1 : 0);
+    for (let j = 0; j < count; j++) {
+      if (idx < total) chunks[i].push(paragraphs[idx++]);
+    }
+  }
+  return chunks.map(c => c.join("\n\n"));
+}
+
+function getFormData() {
+  return {
+    bookTitle: document.getElementById("bookTitle").value.trim(),
+    verseRef: document.getElementById("verseRef").value.trim(),
+    partner1: document.getElementById("partner1").value.trim(),
+    partner2: document.getElementById("partner2").value.trim(),
+    partner3: document.getElementById("partner3").value.trim(),
+    verseText: document.getElementById("verseText").value.trim(),
+    introText: document.getElementById("introText").value.trim(),
+    mainText: document.getElementById("mainText").value.trim()
+  };
+}
+
+function showAlert(msg) {
+  const box = document.getElementById("alertBox");
+  box.textContent = msg;
+  box.style.display = "block";
+  box.scrollIntoView({ behavior: "smooth", block: "center" });
+}
+
+function hideAlert() {
+  document.getElementById("alertBox").style.display = "none";
+}
+
+/* ============================================================
+   即時統計（字數 / 預估時間）
+   ============================================================ */
+
+function refreshStats() {
+  const mainText = document.getElementById("mainText").value;
+  const charCount = countChars(mainText);
+  const minutes = estimateMinutes(charCount);
+  const paragraphs = splitParagraphs(mainText);
+
+  const statsArea = document.getElementById("statsArea");
+  statsArea.innerHTML = `
+    <span class="stat-pill">📝 內文字數 <span class="val">${charCount}</span> 字</span>
+    <span class="stat-pill">⏱ 預估朗讀時間 <span class="val">${minutes}</span> 分鐘</span>
+    <span class="stat-pill">📄 段落數 <span class="val">${paragraphs.length}</span> 段</span>
+  `;
+}
+
+document.getElementById("mainText").addEventListener("input", refreshStats);
+window.addEventListener("DOMContentLoaded", refreshStats);
+
+/* ============================================================
+   分配預覽
+   ============================================================ */
+
+function buildAssignmentPlan(data) {
+  const paragraphs = splitParagraphs(data.mainText);
+  const chunks = splitIntoChunks(paragraphs, 6);
+
+  // 依題目需求的固定分配順序
+  const plan = [
+    { speaker: data.partner2, label: "用靈宣讀", content: chunks[0], key: "chunk1" },
+    { speaker: data.partner3, label: "用靈宣讀", content: chunks[1], key: "chunk2" },
+    { speaker: data.partner1, label: "用靈宣讀", content: chunks[2], key: "chunk3" },
+    { speaker: data.partner2, label: "用靈分享信息重點", content: "（請於此處填寫要點分享內容，建議 1～2 點，並請於共讀當日中午前繳交申言稿）", key: "share1" },
+    { speaker: data.partner2, label: "用靈宣讀", content: chunks[3], key: "chunk4" },
+    { speaker: data.partner3, label: "用靈宣讀", content: chunks[4], key: "chunk5" },
+    { speaker: data.partner1, label: "用靈宣讀", content: chunks[5], key: "chunk6" },
+    { speaker: data.partner3, label: "用靈分享信息重點", content: "（請於此處填寫要點分享內容，建議 1～2 點，並請於共讀當日中午前繳交申言稿）", key: "share2" }
+  ];
+
+  return { chunks, plan };
+}
+
+function renderPreview(data, plan) {
+  const previewCard = document.getElementById("previewCard");
+  const previewArea = document.getElementById("previewArea");
+  previewCard.style.display = "block";
+
+  let html = "";
+  plan.forEach(item => {
+    const speaker = item.speaker || "（未填寫配搭姓名）";
+    html += `
+      <div class="preview-chunk">
+        <span class="speaker-tag">${speaker} ${item.label}</span>
+        <div class="chunk-text">${escapeHtml(item.content) || "（無內容）"}</div>
+      </div>
+    `;
+  });
+  previewArea.innerHTML = html;
+}
+
+function escapeHtml(str) {
+  return (str || "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+
+/* ============================================================
+   Word (.docx) 產生
+   ============================================================ */
+
+async function buildDocx(data, charCount, minutes, plan) {
+  const {
+    Document, Paragraph, TextRun, HeadingLevel,
+    AlignmentType, Packer, BorderStyle
+  } = docx;
+
+  const HEADING_COLOR = "2C3E50";
+  const ACCENT_COLOR = "4A6FA5";
+
+  function speakerHeading(text) {
+    return new Paragraph({
+      spacing: { before: 240, after: 80 },
+      children: [
+        new TextRun({ text: text, bold: true, color: ACCENT_COLOR, size: 24 })
+      ]
+    });
+  }
+
+  function bodyParagraphs(text, opts) {
+    opts = opts || {};
+    const lines = (text || "").split(/\r?\n/);
+    return lines.map(line => new Paragraph({
+      spacing: { after: 160 },
+      children: [
+        new TextRun({ text: line.length ? line : " ", italics: !!opts.italics, size: 22 })
+      ]
+    }));
+  }
+
+  function sectionHeading(text) {
+    return new Paragraph({
+      heading: HeadingLevel.HEADING_2,
+      spacing: { before: 360, after: 160 },
+      border: {
+        bottom: { color: ACCENT_COLOR, space: 4, style: BorderStyle.SINGLE, size: 6 }
+      },
+      children: [ new TextRun({ text: text, bold: true, color: HEADING_COLOR }) ]
+    });
+  }
+
+  function bulletLine(text) {
+    return new Paragraph({
+      spacing: { after: 100 },
+      children: [ new TextRun({ text: "• " + text, size: 22 }) ]
+    });
+  }
+
+  const children = [];
+
+  // 標題
+  children.push(new Paragraph({
+    heading: HeadingLevel.HEADING_1,
+    alignment: AlignmentType.CENTER,
+    spacing: { after: 100 },
+    children: [ new TextRun({ text: data.bookTitle || "生命讀經共讀班", bold: true, color: HEADING_COLOR }) ]
+  }));
+  children.push(new Paragraph({
+    alignment: AlignmentType.CENTER,
+    spacing: { after: 300 },
+    children: [ new TextRun({ text: data.verseRef || "", italics: true, color: ACCENT_COLOR }) ]
+  }));
+
+  // 抬頭預備資訊
+  children.push(sectionHeading("抬頭預備資訊"));
+  children.push(bulletLine(`本次配搭人位及順序：${data.partner1}、${data.partner2}、${data.partner3}`));
+  children.push(bulletLine(`本篇文本字數約 ${charCount} 字（不含標點符號與空白）。`));
+  children.push(bulletLine(`本次安排 2 次分享。包括開頭提醒及結尾禱告，本文預估約 ${minutes} 分鐘。（以 160 字／分鐘計算）`));
+
+  // 聚會開始
+  children.push(sectionHeading("聚會開始（以下為本次逐字稿文本）"));
+
+  // 1. 用靈提醒、禱告並宣讀經文
+  children.push(speakerHeading(`${data.partner1} 用靈提醒、禱告並宣讀經文`));
+  children.push(...bodyParagraphs(
+    `弟兄姊妹們晚安，我們準備開始今天晚上的共讀班，開頭先簡單的自我介紹，我是${data.partner1}、我是${data.partner2}、我是${data.partner3}，歡迎弟兄姊妹一起上線共讀。\n1. 請弟兄姊妹更改顯示名稱為「會所－大區－小區－姓名」的格式。\n2. 請弟兄姊妹預備「恢復本聖經」及本次讀經內容，跟著我們一同進入神豐盛的生命。\n3. ${data.partner1} 開頭禱告（請自行預備禱告內容）`
+  ));
+
+  // 2. 宣讀經文
+  children.push(speakerHeading(`${data.partner1} 宣讀經文`));
+  children.push(...bodyParagraphs(`請大家翻開恢復本聖經【${data.verseRef}】，我們可以同聲宣讀今日的經節～`));
+  children.push(...bodyParagraphs(data.verseText));
+
+  // 3. 前言回顧與連結
+  children.push(speakerHeading(`${data.partner1} 前言回顧與連結`));
+  children.push(...bodyParagraphs(data.introText));
+
+  // 4~11. 依固定順序輸出朗讀 / 分享段落
+  plan.forEach(item => {
+    children.push(speakerHeading(`${item.speaker} ${item.label}`));
+    if (item.key.startsWith("share")) {
+      children.push(...bodyParagraphs(item.content, { italics: true }));
+    } else {
+      children.push(...bodyParagraphs(item.content));
+    }
+  });
+
+  // 結尾禱告
+  children.push(speakerHeading(`${data.partner1} 用靈結尾禱告與晚安`));
+  children.push(...bodyParagraphs(
+    `${data.partner1} 結尾禱告（請自行預備禱告內容）\n\n感謝主，我們今天的共讀班就停在這邊，下週同一時間，歡迎弟兄姊妹們再一同上線共讀，晚安！`
+  ));
+
+  const doc = new Document({
+    sections: [{
+      properties: {},
+      children: children
+    }]
+  });
+
+  return await Packer.toBlob(doc);
+}
+
+/* ============================================================
+   主流程
+   ============================================================ */
+
+function validate(data) {
+  const required = [
+    ["bookTitle", "共讀書名與篇題"],
+    ["verseRef", "聖經經節"],
+    ["partner1", "配搭 1（主持人）"],
+    ["partner2", "配搭 2"],
+    ["partner3", "配搭 3"],
+    ["mainText", "生命讀經完整內文"]
+  ];
+  const missing = required.filter(([key]) => !data[key]).map(([, label]) => label);
+  return missing;
+}
+
+function safeFileName(name) {
+  return (name || "生命讀經共讀班逐字稿").replace(/[\\/:*?"<>|]/g, "").slice(0, 60);
+}
+
+async function generateAll() {
+  hideAlert();
+  const data = getFormData();
+
+  const missing = validate(data);
+  if (missing.length > 0) {
+    showAlert("請先填寫以下必填欄位：" + missing.join("、"));
+    return;
+  }
+
+  const charCount = countChars(data.mainText);
+  const minutes = estimateMinutes(charCount);
+  const { plan } = buildAssignmentPlan(data);
+
+  renderPreview(data, plan);
+
+  const btn = document.getElementById("generateBtn");
+  const originalText = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = "⏳ 產生中，請稍候...";
+
+  try {
+    const blob = await buildDocx(data, charCount, minutes, plan);
+    const today = new Date();
+    const dateStr = `${today.getFullYear()}${String(today.getMonth() + 1).padStart(2, "0")}${String(today.getDate()).padStart(2, "0")}`;
+    const fileName = `${dateStr}_${safeFileName(data.bookTitle)}.docx`;
+    saveAs(blob, fileName);
+  } catch (err) {
+    console.error(err);
+    showAlert("產生 Word 檔時發生錯誤，請確認網路連線正常後再試一次。（" + err.message + "）");
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = originalText;
+  }
+}
+</script>
+
+</body>
+</html>

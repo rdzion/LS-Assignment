@@ -1,0 +1,1248 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>生命讀經共讀班｜逐字稿段落編輯 &amp; Word 產生器</title>
+
+<!--
+  本頁完全離線運作：不引用任何外部 CDN（不含 docx.js、FileSaver.js、Sortable.js、Bootstrap 等）。
+  「產生 Word 檔」是用「HTML 轉 Word」的傳統技巧：把排版好的內容包成一段帶有
+  Word 專用 XML 命名空間的 HTML，再用 Blob 指定 MIME 類型為 application/msword，
+  瀏覽器就會把它下載成 .doc 檔。Word 開啟 .doc 附檔名的 HTML 內容時，會用內建的
+  「HTML 篩選器」讀取並轉換成一般的 Word 文件，不需要任何外部 JavaScript 套件，
+  也完全不受網路連線、外掛程式或 CDN 是否正常影響。
+  拖曳排序功能使用純 HTML5 Drag and Drop API 實作，不依賴 Sortable.js。
+
+  各書卷生命讀經篇數係參考 Living Stream Ministry 官方 500lifestudies.org
+  （FAQ / Recommended Sequence 頁面）所公布的訊息數彙整；部分書卷篇名資料庫
+  （TITLE_DB）係逐篇比對 lsmchinese.org 官方「網上生命讀經」目錄頁面所彙整，
+  目前收錄：啟示錄、哥林多前書、哥林多後書、馬太福音、約翰福音、羅馬書、
+  加拉太書、以弗所書、腓立比書、歌羅西書、希伯來書、創世記、出埃及記共 13 卷。
+  其餘書卷尚未收錄篇名資料，選取後請自行輸入篇名。
+-->
+
+<style>
+  :root {
+    --accent: #4f46e5;
+    --accent-dark: #3730a3;
+    --accent-soft: #eef1fd;
+    --teal: #0d9488;
+    --amber: #d97706;
+    --amber-soft: #fff7e6;
+    --violet: #8b5cf6;
+    --violet-soft: #f5f0ff;
+    --ink: #1f2430;
+    --muted: #8a93a6;
+    --line: #e4e7ee;
+    --bg: #f3f4f9;
+    --card: #ffffff;
+    --danger: #dc2626;
+    --danger-soft: #fdecea;
+    --radius: 14px;
+    --shadow: 0 4px 18px rgba(31, 36, 48, .06), 0 1px 3px rgba(31,36,48,.04);
+    --shadow-hover: 0 10px 28px rgba(31, 36, 48, .10);
+  }
+  * { box-sizing: border-box; }
+  body {
+    background: var(--bg);
+    margin: 0;
+    font-family: "Microsoft JhengHei", "Noto Sans TC", system-ui, -apple-system, sans-serif;
+    color: var(--ink);
+  }
+
+  /* ---------- 版面工具 class（取代 Bootstrap，完全自製、離線可用） ---------- */
+  .container { max-width: 920px; margin: 0 auto; padding: 0 1rem; }
+  .row { display: flex; flex-wrap: wrap; margin: 0 -0.5rem; }
+  .col-3 { flex: 1 1 260px; padding: 0 .5rem; min-width: 220px; }
+  .mb-2 { margin-bottom: .5rem; }
+  .mb-3 { margin-bottom: 1rem; }
+  .mb-4 { margin-bottom: 1.5rem; }
+  .text-center { text-align: center; }
+  .d-flex-center { display: flex; justify-content: center; flex-wrap: wrap; gap: .6rem; }
+
+  .app-header {
+    background: linear-gradient(135deg, #1e1b4b 0%, var(--accent) 55%, var(--teal) 100%);
+    color: #fff;
+    padding: 2.2rem 1.2rem 2rem;
+    border-radius: 0 0 1.4rem 1.4rem;
+    margin-bottom: 1.75rem;
+    box-shadow: 0 12px 30px rgba(79,70,229,.18);
+  }
+  .app-header h1 { font-size: 1.65rem; font-weight: 800; margin: 0 0 .3rem; letter-spacing: .01em; }
+  .app-header p { margin: 0; opacity: .88; font-size: .95rem; }
+  .app-header .offline-tag {
+    display: inline-block;
+    margin-top: .7rem;
+    font-size: .78rem;
+    padding: .35rem .9rem;
+    border-radius: 2rem;
+    background: rgba(255,255,255,.16);
+    backdrop-filter: blur(2px);
+  }
+
+  .card {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    margin-bottom: 1.1rem;
+    overflow: hidden;
+  }
+  .card-header {
+    background: linear-gradient(180deg, #fbfbfe, #ffffff);
+    border-bottom: 1px solid var(--line);
+    font-weight: 800;
+    color: var(--accent-dark);
+    padding: .95rem 1.3rem;
+    font-size: 1rem;
+    letter-spacing: .01em;
+  }
+  .card-body { padding: 1.35rem; }
+
+  label.form-label {
+    display: block;
+    font-weight: 600;
+    color: #45506b;
+    font-size: .88rem;
+    margin-bottom: .35rem;
+  }
+  .form-control {
+    display: block;
+    width: 100%;
+    padding: .58rem .85rem;
+    font-size: .92rem;
+    line-height: 1.6;
+    color: var(--ink);
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: .6rem;
+    font-family: inherit;
+    transition: border-color .15s, box-shadow .15s;
+  }
+  .form-control:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-soft);
+  }
+  textarea.form-control { resize: vertical; }
+  select.form-control { cursor: pointer; }
+
+  .field-hint {
+    margin-top: .35rem;
+    font-size: .78rem;
+    color: var(--muted);
+  }
+
+  /* ---------- 姓名自動完成 ---------- */
+  .autocomplete-wrap { position: relative; }
+  .autocomplete-list {
+    position: absolute;
+    top: calc(100% - .3rem);
+    left: 0;
+    right: 0;
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: .6rem;
+    box-shadow: var(--shadow-hover);
+    z-index: 30;
+    max-height: 190px;
+    overflow-y: auto;
+    display: none;
+  }
+  .autocomplete-list.show { display: block; }
+  .autocomplete-item {
+    padding: .5rem .85rem;
+    cursor: pointer;
+    font-size: .86rem;
+    color: var(--ink);
+  }
+  .autocomplete-item:hover { background: var(--accent-soft); color: var(--accent-dark); }
+
+  /* ---------- 共讀書名與篇題 組合輸入列 ---------- */
+  .title-builder-row {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: .5rem;
+  }
+  .title-builder-row .form-control { width: auto; flex: 1 1 160px; }
+  .fixed-text {
+    font-weight: 700;
+    color: var(--accent);
+    white-space: nowrap;
+    font-size: .9rem;
+  }
+  .title-preview {
+    margin-top: .5rem;
+    font-size: .84rem;
+    color: var(--muted);
+  }
+  .title-preview strong { color: var(--accent-dark); }
+
+  .stat-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: .5rem;
+    background: var(--accent-soft);
+    color: var(--accent-dark);
+    border-radius: 2rem;
+    padding: .38rem .95rem .38rem .5rem;
+    font-size: .86rem;
+    font-weight: 600;
+    margin-right: .5rem;
+    margin-bottom: .5rem;
+  }
+  .stat-pill .icon-badge {
+    width: 1.6rem; height: 1.6rem;
+    border-radius: 50%;
+    background: #fff;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: .85rem;
+  }
+  .stat-pill .val { color: var(--accent); font-size: 1.02rem; font-weight: 800; }
+
+  #generateBtn {
+    background: linear-gradient(135deg, var(--accent), var(--accent-dark));
+    color: #fff;
+    border: none;
+    font-weight: 800;
+    font-size: 1.05rem;
+    padding: .8rem 2rem;
+    border-radius: .8rem;
+    cursor: pointer;
+    box-shadow: 0 8px 20px rgba(79,70,229,.28);
+    transition: transform .12s, box-shadow .12s;
+  }
+  #generateBtn:hover { transform: translateY(-1px); box-shadow: 0 12px 26px rgba(79,70,229,.34); }
+  #generateBtn:disabled { background: #b7bccb; cursor: not-allowed; box-shadow: none; }
+
+  .btn-secondary {
+    background: #fff;
+    color: var(--accent-dark);
+    border: 1.5px solid var(--accent);
+    font-weight: 700;
+    font-size: .9rem;
+    padding: .62rem 1.3rem;
+    border-radius: .7rem;
+    cursor: pointer;
+    transition: background .15s;
+  }
+  .btn-secondary:hover { background: var(--accent-soft); }
+
+  .alert-box {
+    display: none;
+    background: #fdecea;
+    color: #a3231b;
+    border: 1px solid #f4c3bd;
+    border-radius: .7rem;
+    padding: .85rem 1.1rem;
+    margin-bottom: 1rem;
+    font-size: .9rem;
+  }
+
+  /* ---------- 段落卡片編輯區 ---------- */
+  .segments-container { display: flex; flex-direction: column; gap: .85rem; }
+
+  .segment-card {
+    background: #fbfbfe;
+    border: 1px solid var(--line);
+    border-left: 5px solid var(--accent);
+    border-radius: .8rem;
+    padding: .85rem 1rem;
+    transition: border-color .15s, box-shadow .15s, opacity .15s;
+    box-shadow: var(--shadow);
+  }
+  .segment-card.dragging { opacity: .35; }
+  .segment-card.drag-over { border-color: var(--accent); box-shadow: var(--shadow-hover); }
+
+  .segment-card.fixed-card {
+    display: flex;
+    align-items: center;
+    gap: .7rem;
+    padding: .6rem .9rem;
+  }
+  .segment-card.fixed-card.role-share { border-left-color: var(--amber); background: var(--amber-soft); }
+  .segment-card.fixed-card.role-prayer { border-left-color: var(--violet); background: var(--violet-soft); }
+  .fixed-card-label { flex: 1 1 auto; font-weight: 700; font-size: .92rem; }
+  .fixed-card-note { font-size: .76rem; color: var(--muted); font-weight: 400; display: block; margin-top: .15rem; }
+
+  .segment-card-header {
+    display: flex;
+    align-items: center;
+    gap: .6rem;
+    margin-bottom: .6rem;
+    flex-wrap: wrap;
+  }
+  .drag-handle {
+    cursor: grab;
+    font-size: 1.05rem;
+    color: var(--muted);
+    padding: .15rem .3rem;
+    user-select: none;
+    line-height: 1;
+  }
+  .drag-handle:active { cursor: grabbing; }
+
+  .segment-order-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 1.65rem;
+    height: 1.65rem;
+    background: var(--accent);
+    color: #fff;
+    border-radius: 50%;
+    font-size: .78rem;
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+
+  .speaker-select {
+    flex: 1 1 auto;
+    width: auto;
+    min-width: 190px;
+    font-weight: 700;
+    color: var(--accent-dark);
+  }
+
+  .segment-card-header .spacer { flex: 1 1 auto; }
+
+  .card-icon-btns { display: flex; gap: .4rem; flex-shrink: 0; }
+  .icon-btn {
+    width: 2.1rem; height: 2.1rem;
+    border-radius: 50%;
+    border: 1.5px solid var(--line);
+    background: #fff;
+    display: inline-flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    font-size: 1.05rem;
+    line-height: 1;
+    color: var(--accent);
+    transition: transform .12s, background .12s;
+  }
+  .icon-btn:hover { background: var(--accent-soft); transform: scale(1.07); }
+  .icon-btn.danger { color: var(--danger); border-color: #f4c3bd; }
+  .icon-btn.danger:hover { background: var(--danger-soft); }
+
+  textarea.segment-text {
+    min-height: 3.2rem;
+    overflow: hidden;
+  }
+
+  .segment-charcount {
+    text-align: right;
+    font-size: .76rem;
+    color: var(--muted);
+    margin-top: .3rem;
+  }
+
+  .empty-hint {
+    text-align: center;
+    color: var(--muted);
+    font-size: .9rem;
+    padding: 1.6rem 0;
+    border: 1.5px dashed var(--line);
+    border-radius: .8rem;
+  }
+
+  footer.app-footer {
+    text-align: center;
+    color: var(--muted);
+    font-size: .78rem;
+    margin: 2rem 0 1.2rem;
+    line-height: 1.7;
+  }
+</style>
+</head>
+<body>
+
+<div class="app-header text-center">
+  <h1>📖 生命讀經共讀班｜逐字稿段落編輯 &amp; Word 產生器</h1>
+  <p>選好書卷篇數，貼上內文智慧分段，拖曳調整順序後，直接產生排版好的 Word（.doc）逐字稿</p>
+  <span class="offline-tag">✅ 純離線運作，不依賴任何外部套件或網路連線</span>
+</div>
+
+<div class="container">
+
+  <div id="alertBox" class="alert-box" role="alert"></div>
+
+  <!-- 基本資料 -->
+  <div class="card mb-3">
+    <div class="card-header">① 基本資料</div>
+    <div class="card-body">
+      <div class="mb-3">
+        <label class="form-label">共讀書名與篇題</label>
+        <div class="title-builder-row">
+          <select class="form-control" id="bookSelect" style="max-width:170px">
+            <option value="">請選擇書卷</option>
+          </select>
+          <span class="fixed-text">生命讀經—第</span>
+          <select class="form-control" id="chapterSelect" style="max-width:130px">
+            <option value="">請先選擇書卷</option>
+          </select>
+          <span class="fixed-text">篇　篇名</span>
+          <input type="text" class="form-control" id="chapterTitle" placeholder="請選擇書卷與篇數後自動帶入，亦可手動修改">
+        </div>
+        <div class="field-hint" id="chapterTitleHint"></div>
+        <div class="title-preview" id="titlePreview">預覽：（尚未填寫）</div>
+      </div>
+      <div class="mb-3">
+        <label class="form-label">經節範圍</label>
+        <input type="text" class="form-control" id="verseRef">
+        <div class="field-hint">例如：啟示錄第十三章2~4節</div>
+      </div>
+      <div class="row">
+        <div class="col-3 mb-3">
+          <label class="form-label">配搭 1（主持人）姓名</label>
+          <div class="autocomplete-wrap">
+            <input type="text" class="form-control mb-2" id="partner1Name" placeholder="例如：李福軒" autocomplete="off">
+            <div class="autocomplete-list" id="partner1NameList"></div>
+          </div>
+          <label class="form-label">會所（填入姓名後自動帶入，如無請自行填寫）</label>
+          <input type="text" class="form-control" id="partner1Hall" placeholder="例如：H79">
+        </div>
+        <div class="col-3 mb-3">
+          <label class="form-label">配搭 2 姓名</label>
+          <div class="autocomplete-wrap">
+            <input type="text" class="form-control mb-2" id="partner2Name" placeholder="例如：陳柏安" autocomplete="off">
+            <div class="autocomplete-list" id="partner2NameList"></div>
+          </div>
+          <label class="form-label">會所（填入姓名後自動帶入，如無請自行填寫）</label>
+          <input type="text" class="form-control" id="partner2Hall" placeholder="例如：H81">
+        </div>
+        <div class="col-3 mb-3">
+          <label class="form-label">配搭 3 姓名</label>
+          <div class="autocomplete-wrap">
+            <input type="text" class="form-control mb-2" id="partner3Name" placeholder="例如：周博恩" autocomplete="off">
+            <div class="autocomplete-list" id="partner3NameList"></div>
+          </div>
+          <label class="form-label">會所（填入姓名後自動帶入，如無請自行填寫）</label>
+          <input type="text" class="form-control" id="partner3Hall" placeholder="例如：H112">
+        </div>
+      </div>
+      <div class="title-preview">💡 中間分享／結尾分享／結尾禱告會自動以固定框顯示在段落卡片中，直接帶入對應姓名；內容由該配搭當日自行預備，此工具僅用於安排朗讀段落分配。</div>
+    </div>
+  </div>
+
+  <!-- 經文 -->
+  <div class="card mb-3">
+    <div class="card-header">② 今日經文</div>
+    <div class="card-body">
+      <div class="mb-2">
+        <label class="form-label">今日經文內容（多行，逐節貼上）</label>
+        <textarea class="form-control" id="verseText" rows="4" placeholder="例如：&#10;13:2 我所看見的獸，形狀像豹……&#10;13:3 獸的七頭中，有一頭似乎被殺至死……"></textarea>
+      </div>
+    </div>
+  </div>
+
+  <!-- 內文與段落編輯區 -->
+  <div class="card mb-3">
+    <div class="card-header">③ 內文與段落編輯區</div>
+    <div class="card-body">
+
+      <div class="mb-2">
+        <label class="form-label">貼上生命讀經完整內文</label>
+        <textarea class="form-control" id="pasteText" rows="10" placeholder="請將本篇生命讀經全文貼於此處，點擊下方按鈕將自動智慧分段"></textarea>
+      </div>
+      <div class="d-flex-center mb-3">
+        <button type="button" id="splitBtn" class="btn-secondary">📋 貼入文字並智慧分段（6段＋固定配搭）</button>
+      </div>
+
+      <div id="segmentsContainer" class="segments-container"></div>
+      <div id="emptyHint" class="empty-hint" style="display:none;">目前尚無段落卡片，請貼上內文自動分段，或點擊「新增段落」手動建立。</div>
+
+      <div class="d-flex-center" style="margin-top:.9rem;">
+        <button type="button" id="addSegmentBtn" class="btn-secondary">➕ 新增段落</button>
+      </div>
+
+      <div id="statsArea" style="margin-top:1rem;"></div>
+    </div>
+  </div>
+
+  <div class="d-flex-center mb-4">
+    <button id="generateBtn" onclick="generateAll()">⚙️ 產生 Word 檔</button>
+  </div>
+
+  <footer class="app-footer">所有資料僅於您的瀏覽器端處理，不會上傳至任何伺服器；本頁不需要網路連線即可產生 Word 檔。<br>前言回顧與連結非規劃者的工作，故本頁不提供輸入欄位，將於匯出檔中留白提示由主持人當日自行預備。</footer>
+</div>
+
+<script>
+/* ============================================================
+   常數：66 卷生命讀經書名與篇數（依 Living Stream Ministry
+   500lifestudies.org 官方資料彙整，篇數為該書卷生命讀經訊息總數）
+   ============================================================ */
+const BOOKS_OT = [
+  ["創世記", 120], ["出埃及記", 185], ["利未記", 64], ["民數記", 53], ["申命記", 30],
+  ["約書亞記", 15], ["士師記", 10], ["路得記", 8], ["撒母耳記上", 38], ["撒母耳記下", 38],
+  ["列王紀上", 23], ["列王紀下", 23], ["歷代志上", 26], ["歷代志下", 26], ["以斯拉記", 26],
+  ["尼希米記", 26], ["以斯帖記", 26], ["約伯記", 38], ["詩篇", 45], ["箴言", 20],
+  ["傳道書", 20], ["雅歌", 20], ["以賽亞書", 54], ["耶利米書", 44], ["耶利米哀歌", 44],
+  ["以西結書", 27], ["但以理書", 17], ["何西阿書", 35], ["約珥書", 35], ["阿摩司書", 35],
+  ["俄巴底亞書", 35], ["約拿書", 35], ["彌迦書", 35], ["那鴻書", 35], ["哈巴谷書", 35],
+  ["西番雅書", 35], ["哈該書", 35], ["撒迦利亞書", 15], ["瑪拉基書", 35]
+];
+const BOOKS_NT = [
+  ["馬太福音", 72], ["馬可福音", 70], ["路加福音", 79], ["約翰福音", 51], ["使徒行傳", 72],
+  ["羅馬書", 69], ["哥林多前書", 69], ["哥林多後書", 59], ["加拉太書", 46], ["以弗所書", 97],
+  ["腓立比書", 62], ["歌羅西書", 65], ["帖撒羅尼迦前書", 31], ["帖撒羅尼迦後書", 31],
+  ["提摩太前書", 28], ["提摩太後書", 28], ["提多書", 28], ["腓利門書", 28],
+  ["希伯來書", 69], ["雅各書", 14], ["彼得前書", 34], ["彼得後書", 13],
+  ["約翰一書", 44], ["約翰二書", 44], ["約翰三書", 44], ["猶大書", 5], ["啟示錄", 68]
+];
+const BOOKS_ALL = [...BOOKS_OT, ...BOOKS_NT];
+
+/* ============================================================
+   常數：篇名資料庫（逐篇比對 lsmchinese.org 官方目錄彙整）
+   目前收錄 13 卷；其餘書卷選取後請自行輸入篇名。
+   ============================================================ */
+const TITLE_DB = {
+"啟示錄": ["前言","基督的啟示－惟一並終極的","耶穌的見證－特殊並終結的","啟示錄裡的三一神","基督的再來","在耶穌的患難、國度、忍耐裡一同有分","眾地方召會","七燈臺","在眾召會中間的人子","在以弗所的召會－愛、生命和光","在士每拿的召會－復活的生命和生命的冠冕","在別迦摩的召會－為著變化而喫","在推雅推喇的召會－權柄和晨星","在撒狄的召會－白衣和被主承認的名","在非拉鐵非的召會－大災難前被提和神殿中的柱子","在老底嘉的召會－與主一同坐席，坐在祂的寶座上","基督升天後天上的景象","是配的獅子羔羊","自基督升天到這世代末了的世界史－第一印到第四印","殉道聖徒的呼喊和神的答應－第五印和第六印","神對祂子民的保守","羔羊的七眼為著神的建造","揭開第七印後天上的景象，與對地、海、江河、日、月、星辰的審判－頭四號","人的審判－第五號","對人進一步的審判－第六號","基督來據有地","耶路撒冷被踐踏與兩個見證人的見證","第七號","信徒的被提（一）","信徒的被提（二）","對燈臺經歷的四方面","經歷基督變化並建造的生命","有七眼的石頭為著神的建造","宇宙的光明婦人","婦人和男孩子","男孩子和婦人其餘的兒女","大紅龍及其逼迫","天上的爭戰","光明婦人的實際與實行","從海中上來的獸（一）","從海中上來的獸（二）","從海中上來的獸（三）","從海中上來的獸（四）","從地裡上來的獸","啟示錄十二章的異象與以弗所書的一致之處","初熟的果子","初熟果子被提後所要發生的事","莊稼和大酒醡","晚期的得勝者和七碗（一）","七碗（二）","騎在朱紅色獸上的大妓女（一）","騎在朱紅色獸上的大妓女（二）","物質的巴比倫","羔羊的婚娶和婚筵","哈米吉頓的戰爭","千年國","人類末次的背叛與白色大寶座前的審判","新天新地","新耶路撒冷（一）","新耶路撒冷（二）","新耶路撒冷（三）","新耶路撒冷（四）","新耶路撒冷（五）","新耶路撒冷（六）","新耶路撒冷（七）","在永世裡蒙神救贖者的享受與福分","結語","經歷七燈、七眼和七靈"],
+"哥林多前書": ["引言（一）","引言（二）","引言（三）","基督和祂的十字架，是召會中所有難處的惟一解答（一）","基督和祂的十字架，是召會中所有難處的惟一解答（二）","基督不是分開的","釘十字架的基督，是神的能力和神的智慧（一）","釘十字架的基督，是神的能力和神的智慧（二）","基督是我們的智慧：公義、聖別和救贖","為著有分於基督，四件要緊的事","有分於基督的交通","有分於基督作我們的分","經歷基督作從神給我們的智慧","基督的交通帶進對祂的經歷","釘十字架的基督，是使徒職事的中心","神奧祕中的智慧─基督是神深奧的事","用屬靈的話，向屬靈的人，解釋屬靈的事","在認識基督是神的深奧上的二靈","人的靈知道人的事，神的靈知道神的事（一）","人的靈知道人的事，神的靈知道神的事（二）","人的靈知道人的事，神的靈知道神的事（三）","召會是神的耕地和建築（一）","召會是神的耕地和建築（二）","需要在生命中長大（一）","需要在生命中長大（二）","用變化的材料所建造的工程","用天然的東西所建造的工程","在惟一的根基上建造","餧養、喝、喫、栽種、澆灌並生長","神的耕地與神的建築","變化為著建造","建造或是毀壞神的殿","萬有都是為著召會，召會是為著基督","神的奧祕的管家（一）","神的奧祕的管家（二）","對付惡弟兄","對付信徒間的訴訟","對付濫用自由（一）","對付濫用自由（二）","對付濫用自由（三）","對付婚姻的生活（一）","對付婚姻的生活（二）","對付婚姻的生活（三）","對付喫祭偶像之物（一）","對付喫祭偶像之物（二）","對付喫祭偶像之物（三）","以色列人的豫表","長大達到完全據有並享受基督","主的筵席（一）","主的筵席（二）","正當的喫","哥林多前書的鳥瞰","對付蒙頭","對付主的晚餐（一）","對付主的晚餐（二）","對付主的晚餐（三）","對付恩賜（一）","對付恩賜（二）","對付恩賜（三）","對付恩賜（四）","對付恩賜（五）","對付恩賜（六）今天說方言的難處","對付恩賜（七）","正確的基督徒聚會","對付復活（一）","對付復活（二）","對付復活（三）","對付復活（四）","對付收集餽送與結語"],
+"哥林多後書": ["引言（一）","引言（二）","引言（三）","引言（四）","新約的職事（一）","新約的職事（二）","新約的職事（三）","新約的執事（一）","新約的執事（二）","新約的執事（三）","新約的執事（四）","新約的執事（五）","新約的執事（六）","新約的執事（七）","為著召會活基督的榜樣（一）","為著召會活基督的榜樣（二）","聯結、受膏、受印、被擄獲、被征服、被帥領，好撒播基督的香（一）","聯結、受膏、受印、被擄獲、被征服、被帥領，好撒播基督的香（二）","彀資格以基督為字母，用活神賜生命的靈書寫活信（一）","彀資格以基督為字母，用活神賜生命的靈書寫活信（二）","照耀出新約的榮光（一）","照耀出新約的榮光（二）","以沒有帕子遮蔽的臉，觀看並返照主的榮光，漸漸變化成為與主同樣的形像，從榮耀到榮耀，乃是從主靈變化成的（一）","以沒有帕子遮蔽的臉，觀看並返照主的榮光，漸漸變化成為與主同樣的形像，從榮耀到榮耀，乃是從主靈變化成的（二）","新約職事的素質（一）","新約職事的素質（二）","那靈（作生命的供應）的職事，與義（作神的彰顯）的職事（一）","那靈（作生命的供應）的職事，與義（作神的彰顯）的職事（二）","那靈（作生命的供應）的職事，與義（作神的彰顯）的職事（三）","執事與職事成為一","藉著十字架的殺死將生命顯明出來（一）","藉著十字架的殺死將生命顯明出來（二）","耶穌的治死與裡面之人的更新（一）","耶穌的治死與裡面之人的更新（二）","耶穌的治死與裡面之人的更新（三）","藉著第二步的和好，在基督裡的新造成為神的義（一）","藉著第二步的和好，在基督裡的新造成為神的義（二）","神性與人性的調和","新約的執事（八）","新約的執事（九）","新約的執事（十）","新約的執事（十一）","新約的執事（十二）","新約的執事（十三）","新約的執事（十四）","使徒關於供給缺乏聖徒的交通（一）","使徒關於供給缺乏聖徒的交通（二）","使徒關於供給缺乏聖徒的交通（三）","使徒關於供給缺乏聖徒的交通（四）","保羅為他使徒權柄的表白（一）","保羅為他使徒權柄的表白（二）","保羅為他使徒權柄的表白（三）","保羅為他使徒權柄的表白（四）","保羅為他使徒權柄的表白（五）","保羅為他使徒權柄的表白（六）","保羅為他使徒權柄的表白（七）","保羅為他使徒權柄的表白（八）","末了的勸勉、問安與祝福（一）","末了的勸勉、問安與祝福（二）"],
+"馬太福音": ["王的家世與身分（一）","王的家世與身分（二）","王的家世與身分（三）","王的家世與身分（四）","王的家世與身分（五）","王的家世與身分（六）","王的家世與身分（七）","王的受膏（一）","王的受膏（二）","王的受膏（三）","王的受膏（四）","王職事的開始","國度憲法的頒佈（一）","國度憲法的頒佈（二）","國度憲法的頒佈（三）","國度憲法的頒佈（四）","國度憲法的頒佈（五）","國度憲法的頒佈（六）","國度憲法的頒佈（七）","國度憲法的頒佈（八）","國度憲法的頒佈（九）","國度憲法的頒佈（十）","國度憲法的頒佈（十一）","國度憲法的頒佈（十二）","王職事的繼續（一）","王職事的繼續（二）","王職事的繼續（三）","王職事的繼續（四）","王職事的繼續（五）以及王職事的擴大（一）","王職事的擴大（二）","王對各面的風度","對王棄絕的建立（一）","對王棄絕的建立（二）","對王棄絕的建立（三）","國度奧祕的揭示（一）","國度奧祕的揭示（二）","國度奧祕的揭示（三）","國度奧祕的揭示（四）","國度奧祕的揭示（五）","國度奧祕的揭示（六）","寶貝和珠子","達到榮耀的路（一）","達到榮耀的路（二）","達到榮耀的路（三）","達到榮耀的路（四）","達到榮耀的路（五）","達到榮耀的路（六）","達到榮耀的路（七）","國度實現的小影","關於基督之啟示與異象的應用","國度裏的關係（一）","國度裏的關係（二）","國度的要求","國度的賞賜與國度賞賜的比喻","國度寶座與十架苦杯","對屬天之王的熱烈歡迎，潔淨聖殿並咒詛無花果樹","屬天的王受試驗（一）","屬天的王受試驗（二）","屬天的王受試驗（三）","對猶太宗教徒的責備並耶路撒冷連其聖殿的被棄","國度的豫言（一）","國度的豫言（二）","國度的豫言（三）","國度的豫言（四）","國度的豫言（五）","國度的豫言（六）","國度的豫言（七）","對眾人的試驗和筵席的設立","受壓榨於客西馬尼，為猶太人所捉，為議會所審，並為彼得所否認","受審判、被釘十字架並埋葬","人的不義與神的義","王的得勝"],
+"約翰福音": ["前言","生命與建造的引言（一）","生命與建造的引言（二）","生命與建造的引言（三）","生命與建造的引言（四）","生命的原則","生命的目的","道德人的需要－生命的重生（一）","道德人的需要－生命的重生（二）","基督的擴增和無限量的基督","不道德人的需要－生命的滿足（一）","不道德人的需要－生命的滿足（二）","垂死人的需要－生命的醫治","軟弱人的需要－生命的點活","飢餓人的需要－生命的餧養（一）","飢餓人的需要－生命的餧養（二）","乾渴人的需要－生命的解渴（一）","乾渴人的需要－生命的解渴（二）","為罪奴役之人的需要－生命的釋放（一）","為罪奴役之人的需要－生命的釋放（二）","宗教中瞎眼人的需要－生命的視力與生命的牧養（一）","宗教中瞎眼人的需要－生命的視力與生命的牧養（二）","死人的需要－生命的復活（一）","死人的需要－生命的復活（二）","生命的結果與繁增（一）","生命的結果與繁增（二）","生命在愛中維持交通的洗滌（一）","生命在愛中維持交通的洗滌（二）","三一神的分賜－為著產生住處（一）","三一神的分賜－為著產生住處（二）","三一神的分賜－為著產生住處（三）","三一神的分賜－為著產生住處（四）","在神聖經綸中三一神的生機體（一）","在神聖經綸中三一神的生機體（二）","在神聖經綸中三一神的生機體（三）","那靈的工作終結於神性與人性的調和（一）","那靈的工作終結於神性與人性的調和（二）","生命的禱告（一）","生命的禱告（二）","生命的禱告（三）","生命的禱告（四）","生命經過死而復活的過程－為著繁增（一）","生命經過死而復活的過程－為著繁增（二）","生命經過死而復活的過程－為著繁增（三）","生命經過死而復活的過程－為著繁增（四）","在復活中的生命（一）","在復活中的生命（二）","在復活中的生命（三）","在復活中的生命（四）","終極的總結","憑者內裏生命的滿溢結果子"],
+"羅馬書": ["前言","神的福音","邪惡的根源與約束的路","宗教的虛空與全然無望","神的稱義之法","稱義的表樣","稱義主觀的經歷（一）","稱義主觀的經歷（二）","稱義的結果─在基督裏對神完全的享受","在基督裏的恩賜遠超過在亞當裏的承受","與基督的聯合","在我們肉體中律法的捆綁（一）","在我們肉體中律法的捆綁（二）","在我們靈裏那靈的釋放（一）","在我們靈裏那靈的釋放（二）","在我們靈裏那靈的釋放（三）","生命裏的聖別","榮耀的後嗣（一）","榮耀的後嗣（二）","榮耀的後嗣（三）","榮耀的後嗣（四）","神的揀選，我們的定命（一）","神的揀選，我們的定命（二）","神揀選中的經綸","在實行身體生活上的變化（一）","在實行身體生活上的變化（二）","在實行身體生活上的變化（三）以及在服從、愛、和爭戰上的變化","在接納信徒上的變化（一）","在接納信徒上的變化（二）","福音的總結","結束的話","羅馬書的基本觀念","羅馬五至八章的基本要點","得釋放脫離罪、律法和肉體","得釋放脫離死（一）","得釋放脫離死（二）","羅馬七、八章裏的律","羅馬五至八章裏的生命與死亡","藉著思念靈住在基督裏","在生命裏得救脫離罪和世俗","在生命裏得救脫離天然","在生命裏得救脫離個人主義","在生命裏得救脫離分裂","在生命裏得救脫離己的樣式（一）","在生命裏得救脫離己的樣式（二）","藉著恩典在生命中作王","在生命中作王的意義","在生命中作王勝過死","在生命中作王勝過撒但","肉體與靈","在祂兒子福音上的事奉","標出","羅馬書中的兒子名分","藉復活而標出","藉聖別的靈而標出","藉調和之靈而標出","義─福音的大能","恩典的揀選","身體生活的實行","三一神的分賜為著完成祂的定旨","三一神的分賜─根據祂的公義，藉著祂的聖別，而達到祂的榮耀","三一神的生命分賜到三部分的人裏面","不是替換的生命，乃是接枝的生命","藉著接枝的生命變化並模成（一）","藉著接枝的生命變化並模成（二）","神在肉體中定罪了罪","經過過程的神是生命之靈的律","神在肉體中定罪了罪，使我們得以在靈裏","在靈裏經歷那靈的工作"],
+"加拉太書": ["加拉太書的背景與主題","使徒的福音","神的兒子與人的宗教相對","神的兒子啟示在我們裡面","保羅使徒職分的形成","保羅對福音真理的忠信與彼得的不忠信","在基督裡的自由與律法下的奴役相對","福音的真理","向律法死了，向神卻活著","不再是我，乃是基督在我裡面活著","不廢棄神的恩","釘十字架的基督","基督與那靈","聽信仰與行律法相對","那靈－福音的福","那靈與肉體相對","傳給亞伯拉罕的福音","應許與律法相對","信仰頂替律法","亞伯拉罕的後裔和亞伯拉罕的子孫","浸入基督，穿上基督，以及眾人在基督裡都是一","兒子名分的靈頂替律法的監護","基督需要成形在承受應許者的裡面","兩個約與兩種兒女","不要與基督隔絕","除去麵酵，以及不將自由當作放縱肉體的機會","憑著靈，不憑著肉體而行","把肉體釘十字架，好憑著靈而行","如何挽回墮落者，如何完全滿足基督的律法，以及如何撒種","向宗教世界已經釘了十字架，以活出新造","耶穌的烙印與基督的恩典","從那靈而生，以接受那靈（一）","從那靈而生，以接受那靈（二）","憑著靈而行","為著那靈撒種，以收永遠的生命","為著那靈撒種好作新造","在我們靈裡接受並享受主的恩典","兩種憑著靈而行","在神聖的準則和腳蹤裡憑著靈而行","憑著那靈作我們生命的素質和我們道路的途徑而行","憑著靈而行以活基督","憑著靈，照著基本準則而行，活新造並神的以色列","在我們靈裡享受基督，憑著靈而行","作神的兒子憑著靈而行（一）","作神的兒子憑著靈而行（二）","照基本的準則而行"],
+"以弗所書": ["以弗所書的介言","三方面的美言","蒙揀選成為聖別","豫定得兒子的名分","神恩典的榮耀得著稱讚","在子裡的救贖","神意願的奧祕","萬有在基督裡歸一於一個元首之下（一）","萬有在基督裡歸一於一個元首之下（二）","萬有在基督裡歸一於一個元首之下（三）","新約信徒使神的榮耀得著稱讚","受了聖靈為印記","我們得基業的憑質","智慧和啟示的靈以及我們的心眼","神呼召的盼望以及神在聖徒中基業之榮耀的豐富","神能力的浩大","基督向著召會作萬有的頭","召會是基督的身體","三一神分賜到我們裡面且作到我們全人裡面","死在過犯並罪之中","靠恩得救成為神的傑作","從前遠離如今親近","拆毀了中間隔斷的牆","兩下創造成一個新人","穿上新人","兩下在一個身體裡與神和好，以及聖徒同國之民和神家裡的親人","長成聖殿，並被建造成為神的居所","恩典的管家職分","奧祕的啟示","基督的豐富產生召會","召會照著神永遠的定旨為顯示神的智慧","得以加強到裡面的人裡，使基督安家在我們心裡","領略基督的量度並認識基督的愛","被充滿，成為神一切的豐滿","神在召會中並在基督裡得著榮耀","保守那靈的一","我們是一的根據","成全聖徒的恩賜","信徒的標準","達到標準的路","被成全的路","都是建造的肢體，沒有等級","達到三件事","小孩子與教訓之風","肢體的長大，為著建造基督的身體","照著那在耶穌身上是實際者，學了基督","脫去了舊人並穿上了新人","不叫神的聖靈憂愁的生活","學基督的摘要","活在愛與光中","憑著在靈裡被充滿而活著","夫妻關係的生活","基督與召會奧祕的豫表","基督藉著潔淨，聖化召會","在三個階段裡的基督","聖化、潔淨、保養與顧惜（一）","基督如何榮化召會","聖化、潔淨、保養與顧惜（二）","神渴望得著榮耀的召會","在神的經綸裡經歷基督","第五章中勸勉的摘要","信徒在父子、主僕關係中的生活","對付屬靈仇敵的爭戰","神全副的軍裝（一）","神全副的軍裝（二）","藉禱告來應用","結語","召會是二性品的生命","為著召會生活之調和的靈","規條和道理","舊人與新人","神對召會所完成的工作","破壞召會的三項事物","召會的七方面","神的經綸－基督同召會","神的經綸－基督作到我們裡面","在神經綸中的基督","為著召會生活接受基督作我們的人位","基督的五方面","藉著長到基督裡穿上新人","召會－基督的彰顯","召會－基督的滿溢","經歷基督的豐富","滿溢而說話","規條與召會生活","除滅規條","規條與基督相對","宇宙的建造與地方的建造","為著建造得餧養而長大","藉著生命長大而放下道理","是信仰不是道理","新人的成全","新人的團體生活","靈和召會","新婦的美麗","向著召會作萬有的頭","召會是神的戰士"],
+"腓立比書": ["腓立比書的背景和主題","在腓立比的召會","保羅為福音所受的苦難，以及他對恩典的享受","各種不同的傳揚基督","耶穌基督之靈全備的供應","藉著活基督顯大基督","保羅上好的揀選","在一個靈裏站立得住，同魂一齊努力","信徒們對使徒的扶持","以基督為我們的榜樣","基督的高舉","作成我們的救恩","將基督表明出來","澆奠在信徒信心之祭物上的奠祭","使徒對信徒的關切","同魂與不顧我們的魂","屬靈信徒積極的三方面，與宗教的熱中猶太教者消極的三方面相對","因基督看萬事為虧損","以認識基督為至寶","給人看出是在基督裏面","追求認識基督、並祂復活的大能、以及同祂受苦的交通","模成基督的死，以達到那從死人中傑出的復活","藉著竭力追求基督而贏得祂","有同樣的心思，並按著那同一規則而行","等待基督將我們的身體改變形狀","思念相同的事並在主裡喜樂","基督徒生活中優越的美德（一）","基督徒生活中優越的美德（二）","使徒在基督裡知足的祕訣","信徒在使徒需用上的交通","保羅的問安與祝福","恩典、救恩、那靈與基督","耶穌基督之靈全備的供應為著顯大基督","藉著那靈活基督","藉著那靈接受話而活基督","那靈全備供應的豐富具體化在話裡面","豐富的話、全備的供應、和不住的禱告，為著活基督","基督的豐富實化在那靈全備的供應裡，那靈全備的供應具體化在神豐富的話裡","藉著接受神的話，有分於那靈全備的供應，並享受基督的豐富（一）","藉著接受神的話，有分於那靈全備的供應，並享受基督的豐富（二）","基督藉著祂的話住在我們裡面而安家在我們裡面","被主的豐富浸透，以致凡所作的都在主的名裡","基督、救恩、神、以及生命的話","神的話是活神的具體表現","生命的話與活的基督乃是一","神的兒女好像發光之體照耀，將生命的話表明出來","在我們實際生活裡常時的救恩","藉著耶穌基督之靈全備的供應，以及內住之神裡面的運行，經歷常時的救恩","為著我們常時救恩之神聖、豐富的供備","你們信心的祭物","給人看出是在基督裡面，有藉著信基督而有之神的義","經歷基督復活的大能而得著基督","達到傑出的復活以得著基督","向著標竿竭力追求，為要得著神召我們向上去得的獎賞","獨一的思念與獨一的生活行動","滿了謙讓宜人卻一無罣慮的生活（一）","滿了謙讓宜人卻一無罣慮的生活（二）","滿了謙讓宜人卻一無罣慮的生活（三）","滿了謙讓宜人卻一無罣慮的生活（四）","滿了謙讓宜人卻一無罣慮的生活（五）","滿了謙讓宜人卻一無罣慮的生活（六）","滿了謙讓宜人卻一無罣慮的生活（七）"],
+"歌羅西書": ["本卷書的背景及地位","引言","使徒的禱告","脫離黑暗的權勢，遷入神愛子的國裡","基督－居首位並包羅萬有者，神的中心與普及","基督－眾聖徒的分","在光中有分於基督","基督－一切受造之物的首生者","基督－從死人中復活的首生者","基督與創造的關係","神的管家職分","補滿基督患難的缺欠","完成神的話","基督－神經綸的奧祕","基督在你們裡面成了榮耀的盼望","將各人在基督裡成熟的獻上","照著基督的運行竭力奮鬥","基督－神的奧祕","經歷那是神奧祕的基督","在神的奧祕－基督－裡行事為人","不被欺騙並擄去而離開基督","在基督裡面得了豐滿並受了割禮","神救恩的經綸","基督－一切影兒的實體","基督與神祕主義相對","對基督之死的經歷與禁慾主義相對","基督－我們的生命","基督－新人的成分","聖徒與基督聯合的生活－由基督的平安所管理並為基督的話所內住","聖徒與基督聯合的生活－在人性生活中彰顯基督，持續的禱告與智慧的行事","結語","活基督作新人的成分","為新人的緣故，基督與文化相對","包羅萬有的基督（一）","包羅萬有的基督（二）","包羅萬有的基督與文化相對","基督在你們裡面","基督活在我裡面","活基督","客觀的啟示、主觀的職事、以及實際的經歷","自訂並自加的文化成為基督的代替品","經歷基督","藉著接枝到基督裡面而與祂聯合","在基督裡面已經生根，以神的增長而長大","包羅萬有之基督延展無限的啟示","在基督裡面已經生根，並正被建造，就要在祂裡面行事為人","憑經過過程的神，在基督裡生根並被建造","接受基督","在基督裡成熟","基督在各方面被頂替","在基督裡面已經生根，並正被建造（一）","在基督裡面已經生根，並正被建造（二）","在基督裡面得了豐滿、受了割禮、復活、並一同與祂活過來","在基督裡並照著基督","不可讓人騙取享受基督的獎賞","持定元首，本於祂，全身以神的增長而長大","與基督同死，脫離了世上的蒙學，並與基督一同復活，與祂一同活在神裡面","尋求在上面的事，並思念在上面的事","與基督同有一個地位，一個生命，一個生活，一個定命和一個榮耀","基督在新人裡是一切的肢體，又在一切的肢體之內","在上面的事上與基督是一","新人的更新","基督的平安在我們心裡作仲裁","基督的話住在我們裡面","堅定持續的禱告"],
+"希伯來書": ["前言","神說話了","兒子","基督是神的兒子－是神，超越天使","承受救恩的人","這麼大的救恩","耶穌是人的兒子－是人，超越天使","成為肉體、釘十字架、復活、得榮耀、並被高舉的耶穌","救恩的元帥（一）","救恩的元帥（二）","聖別人的與被聖別的","眾子，眾弟兄，召會","憐憫、忠信的大祭司","聖別的弟兄們與有分於屬天呼召者","基督為使徒，超越摩西","基督的同夥","完成神定旨的美地","存留之安息日的安息（一）","存留之安息日的安息（二）","存留之安息日的安息（三）","存留之安息日的安息（四）","存留之安息日的安息（五）","存留之安息日的安息（六）","存留之安息日的安息（七）","不信的惡心，將活神離棄了；神活的話；以及人的各部分","救恩的三個階段","尊大的大祭司與施恩的寶座","照著麥基洗德等次的大祭司和永遠救恩的根源","公義的話與基督開端的話","竭力前進，達到成熟；以及緊隨先鋒逃入並拋錨於避難所","天上的基督在天上的職事","永久、尊大、君尊的大祭司","長遠活著且能拯救的神聖大祭司","不能毀壞的生命","屬天的執事與更超特的職任","新約","生命之律","生命之律的運行","舊約的豫表與新約的實際","帳幕器具的排列所描繪對基督的經歷","新約和新遺命","基督的兩次顯明","基督的祭物頂替並了結舊約的祭物","要前來進入至聖所，不可退縮回到猶太教","不是永遠的沉淪，乃是時代的刑罰","國度的賞賜與得著魂","信是獨一的路，以及信的定義","信心的歷史和見證人","信心的創始者與成終者","奔跑賽程","受管教而得聖別","不可墜落離開恩典","舊約與新約景象的對比","不能震動的國","召會生活實行的十項美德","為著召會生活經歷基督","進入幔內與出到營外","喫與嗎哪","金罐裡的嗎哪","在神面前享受隱藏的嗎哪","發芽的杖（一）","發芽的杖（二）","律法─神的見證","生命之律在我們裡面各部分擴展","藉著生命之律的運行，模成長子的形像","隨從生命之律而活與照著膏油塗抹而行動","兒子名分的完成","照著神的性情而活","生命之律的功能"],
+"創世記": ["創世記－總綱與中心思想","撒但的背叛與敗壞","神的恢復與進一步的創造（一）─過程","神的恢復與進一步的創造（二）─過程","第四天的光","神的恢復與進一步的創造（三）－目的","神的恢復與進一步的創造（四）─目的","神的恢復與進一步的創造（五）－終極的完成","神的恢復與進一步的創造（六）－終極的完成","神達成祂目的的手續、（一）","神達成祂目的的手續（二）","變化為著生命流中的建造","兩棵樹（一）","兩棵樹（二）","貫串聖經的生命線","貫串聖經的知識線","神作到人裏面作生命","人第一次的墮落","神對人第一次墮落的應付（一）","蛇、女人、和女人的後裔","神對人第一次墮落的應付（二）","人第二次的墮落（一）","該隱與亞伯","人第二次的墮落（二）","人第二次的墮落（三）","逃避人類墮落最終結局的路","人第三次的墮落","從人第三次墮落蒙拯救的路（一）","改變時代的生活與工作","從人第三次墮落蒙拯救的路(二）","藉水得救","在復活裏的生活（一）","在復活裏的生活（二）","在復活裏的生活（三）","在復活裏的生活（四）","人第四次的墮落","神呼召的意義","神呼召的背景和起源並蒙召者的經歷","蒙召的動機和力量","答應神呼召的歷程","憑信而活","蒙召者的試煉","蒙召者的得勝","後裔和地","神與亞伯拉罕所立的約","兩個婦人的寓意","用割禮堅立神的約","揭示神聖名稱並更改人名以達成神的目的","受割禮以達成神的目的","與在人水平上的神來往","一次榮耀的代禱","一個失敗的義人","一根鹽柱","憑亂倫所生的後裔","隱藏的軟弱和羞慚的代禱","以撒的出生和長大","以撒的獻上（一）","以撒的獻上（二）","撒拉的死和埋葬","以撒的婚姻－與主在一裏實際的生活","以撒的婚姻－基督娶召會的豫表","生命沒有成熟","承受恩典","安息與享受","有天然弱點如亞伯拉罕，且活在天然生命裏如雅各","蒙揀選","受對付（一）","受對付（二）","受對付（三）","受對付（四）","受對付（五）","受對付（六）","受對付（七）","受對付（八）","被破碎","破碎之後","聖經中神建造的鳥瞰","被變化（一）","被變化（二）","被變化（三）","被變化（四）","被變化（五）","被變化（六）","被變化（七）","柱子的建造者－巧匠戶蘭（一）","柱子的建造者－巧匠戶蘭（二）","被變化（八）","被成全為柱子的路","被變化（九）","被變化（十）","雅各一生中的三根柱子和一個臺","成熟的過程（一）","成熟的過程（二）","成熟的表顯（一）","祝福","聖經中長子名分的轉移","成熟的表顯（二）","成熟的表顯（三）","成熟的表顯（四）","關於猶大、西布倫和以薩迦所豫言之祝福的屬靈意義（一）","關於猶大、西布倫和以薩迦所豫言之祝福的屬靈意義（二）","成熟的表顯（五）","但、迦得、亞設和拿弗他利的屬靈意義","成熟的表顯（六）","約瑟和便雅憫的屬靈意義（一）","約瑟和便雅憫的屬靈意義（二）","約瑟和便雅憫的屬靈意義（三）","聖經中神經綸的終極完成","成熟的表顯（七）","成熟的以色列掌權的一面（一）","約瑟的生活與他的異象相符","成熟的以色列掌權的一面（二）","成熟的以色列掌權的一面（三）","約瑟得釋放並高舉的祕訣","成熟的以色列掌權的一面（四）","約瑟對付他的哥哥們","成熟的以色列掌權的一面（五）","成熟的以色列掌權的一面（六）","成熟的以色列掌權的一面（七）","成熟的以色列掌權的一面（八）"],
+"出埃及記": ["序言","被奴役的以色列人","豫備拯救者","對神有用的生命","神呼召所豫備的人（一）","神呼召所豫備的人（二）","團體的荊棘","三個神蹟","蒙召者的男幫手和女幫手","神呼召摩西的總論","神呼召的目的","完成神旨意的三個站口","神的要求和法老的抗拒（一）","耶和華神的名和祂的約","神對摩西進一步的訓練","神的要求和法老的抗拒（二）","神的要求和法老的抗拒（三）","神的要求和法老的抗拒（四）","神的要求和法老的抗拒（五）","法老狡猾的討價還價","法老的心地剛硬","神的要求和法老的抗拒（六）","逾越節（一）","逾越節（二）","逾越節（三）","以色列人出埃及（一）","以色列人出埃及","法老最後的掙扎","以色列人過紅海","以色列人在瑪拉的經歷","以色列人在以琳的經歷","嗎哪的經歷","神對付祂百姓的肉體","糧食的更換","屬天的糧食－嗎哪（一）","屬天的糧食─嗎哪（二）","屬天的糧食─嗎哪（三）","屬天的糧食－嗎哪（四）","屬天的糧食─嗎哪（五）","從被擊打的磐石流出的活水（一）","從被擊打的磐石流出的活水（二）","在復活裏生命的水","喝生命的水（一）","喝生命的水（二）","湧流生命的水","戰敗亞瑪力人","繼續和亞瑪力人爭戰","亞瑪力人與君王職分相對","國度的豫表","帶進神的同在和對神的認識中","神的見證將神啟示給祂的百姓","律法是神活的話，將神的本質注入祂所愛的尋求者裏面","神將律法賜給祂的百姓，祂尋找愛祂的人","藉著愛神和神的話，並藉著與神合一而遵守神的律法（一）","藉著愛神和神的話，並藉著與神合一而遵守神的律法（二）","舊約尋求神的人如何享受神的律法（一）","舊約尋求神的人如何享受神的律法（二）","作為神活話的律法對於祂所愛之尋求者的功用","神所愛的尋求者藉著作為神活話的律法所領受的祝福（一）","神所愛的尋求者藉著成為神活話的律法所領受的祝福（二）","頒賜律法和律法功用的消極方面（一）","頒賜律法和律法功用的消極方面（二）","頒賜律法和律法功用的消極力面（三）","律法離開活神，就成了殺死人的字句","定罪和屬死職事的榮光上面的帕子","律法上關乎敬拜神的條例","人的工作所造成的污穢以及因著人的方法而造成的暴露","律法上關乎人際關係的第一個條例","律法的各項條例","律法條例的暗示、明示和意義（一）","律法條例的暗示、明示和意義（二）","律法條例的暗示、明示和意義（三）","耶和華的使者引領祂的百姓得著應許之地為業（一）","耶和華的使者引領祂的百姓得著應許之地為業（二）","耶和華的使者引領祂的百姓得著應許之地為業（三）","約的制定（一）","約的制定（二）","立約的血（一）","立約的血（二）","在透亮清明的天裏神的異象以及在神的榮耀之下與神同住","帳幕及其器具在材料和樣式上的異象（一）","帳幕及其器具在材料和樣式上的異象（二）","帳幕及其器具在材料和樣式上的異象（三）","見證的櫃（一）","見證的櫃（二）","見證的櫃（三）","見證的櫃（四）","見證的櫃（五）","見證的櫃（六）","陳設餅的桌子（一）","陳設餅的桌子（二）","燈臺（一）","燈臺（二）","燈臺─長大，分枝，發芽，開花，為著發光","帳幕的蓋（一）","帳幕的蓋（二）","帳幕的豎板（一）","帳幕的豎板（二）","帳幕裏面的幔子（一）","帳幕裏面的幔子（二）","帳幕的門簾（一）","帳幕的門簾（二）","帳幕的門簾（三）","燔祭壇（一）","燔祭壇（二）","燔祭壇（三）","燔祭壇（四）","燔祭壇（五）","燔祭壇（六）","帳幕的外院子（一）","帳幕的外院子（二）","帳幕的外院子（三）","帳幕的外院子（四）","點燈和祭司的衣服（一）","點燈和祭司的衣服（二）","祭司的衣服（一）","祭司的衣服（二）","祭司的衣服（三）","祭司的衣服（四）","祭司的衣服（五）","祭司的衣服（六）","祭司的衣服（七）","祭司的衣服（八）","祭司的衣服（九）","祭司的衣服（十）","祭司的衣服（十一）","祭司的衣服（十二）","祭司的衣服（十三）","祭司的衣服（十四）","祭司的衣服（十五）","祭司的衣服（十六）","祭司的衣服（十七）","亞倫和他的兒子成聖作祭司（一）","亞倫和他的兒子成聖作祭司（二）","亞倫和他的兒子成聖作祭司（三）","亞倫和他的兒子成聖作祭司（四）","亞倫和他的兒子成聖作祭司（五）","亞倫和他的兒子成聖作祭司（六）","亞倫和他的兒子成聖作祭司（七）","亞倫和他的兒子成聖作祭司（八）","亞倫和他的兒子成聖作祭司（九）","亞倫和他的兒子成聖作祭司（十）","亞倫和他的兒子成聖作祭司（十一）","亞倫和他的兒子成聖作祭司（十二）","亞倫和他的兒子成聖作祭司（十三）","亞倫和他的兒子成聖作祭司（十四）","金香壇（一）","金香壇（二）","金香壇（三）","金香壇（四）","金香壇（五）","金香壇（六）","贖罪銀（一）","贖罪銀（二）","贖罪銀（三）","銅洗濯盆","聖膏油（一）","聖膏油（二）","聖膏油（三）","複合的膏油─複合的靈（一）","複合的膏油─複合的靈（二）","複合的膏油─複合的靈（三）","複合的膏油所豫表複合之靈的成分（一）","複合的膏油所預表複合之靈的成分（二）","複合的膏油所豫表複合之靈的成分（三）","複合的膏油所豫表複合之靈的成分（四）","香（一）","香（二）","香（三）","製作帳幕、器具和祭司衣服的人（一）","製作帳幕、器具和祭司衣服的人（二）","安息日與帳幕建造工作的關係","干犯律法","金牛犢偶像的原則","對付偶像和拜偶像的人","神的同伴（一）","神的同伴（二）","摩西與神同在（一）","摩西與神同在（二）","摩西與神同在（三）","摩西與神同在（四）","製作帳幕及其器具和祭司的衣服（一）","製作帳幕及其器具和祭司的衣服（二）","帳幕的建立（一）","帳幕的建立（二）"]
+};
+
+/* ============================================================
+   常數：人位角色與固定配搭
+   ============================================================ */
+const ROLE_FIXED_PARTNER = { midShare: "partner2", endShare: "partner3", closePray: "partner1" };
+const ROLE_ACTION_LABEL  = { midShare: "重點分享", endShare: "重點分享", closePray: "用靈結尾禱告" };
+const ROLE_MENU_LABEL    = { midShare: "中間分享", endShare: "結尾分享", closePray: "結尾禱告" };
+const FIXED_PLACEHOLDER_TEXT = {
+  midShare: "（請依信息內容分享1~2個重點，並於共讀當日中午前繳交申言稿）",
+  endShare: "（請依信息內容分享1~2個重點，並於共讀當日中午前繳交申言稿）",
+  closePray: "（請自行預備結尾禱告內容）"
+};
+
+// 貼上內文後，6 個朗讀段落的預設人位順序（已避開角色衝突規則，可再自行調整）
+const DEFAULT_SPLIT_SPEAKERS = ["partner2", "partner3", "partner1", "partner2", "partner3", "partner1"];
+
+// 姓名 → 會所 對照表（依北投大區共讀夜間班輪值表建立）。
+const NAME_TO_HALL = {
+  "謝正男": "H61", "周博恩": "H112", "陳柏安": "H81", "潘仰信": "H79",
+  "謝恩": "H12", "李福軒": "H79", "曾守榮": "H112", "簡逸豪": "H12",
+  "黃梓恆": "H81", "林鴻偉": "H36",
+  "吳笙宇": "H12", "張毅全": "H60", "方恩斌": "H112", "鍾禹鋒": "H81",
+  "賴巍中": "H61", "呂德安": "H81", "李罕衷": "H61", "陸湧元": "H12",
+  "倪耀恩": "H61",
+  "李讓": "H12", "陳劭甫": "H112", "鄭緯綸": "H37", "劉立煊": "H12",
+  "彭益景": "H12", "徐偉倫": "H61", "張宏恩": "H81", "趙鈺容": "H61",
+  "程旭弘": "H81", "蔡溢恩": "H81", "朱真儀": "H12",
+  "王晨維": "H60", "楊明敏": "H61", "范庭欣": "H12", "廖健智": "H81",
+  "劉立城": "H79", "陳子傑": "H36", "林建銘": "H61", "黃主業": "H81",
+  "楊崇榮": "H61", "陳亭旭": "H36", "高聖傑": "H60"
+};
+
+/* ============================================================
+   工具函式
+   ============================================================ */
+function countChars(text) {
+  if (!text) return 0;
+  const stripped = text.replace(/[\s\p{P}\p{S}]/gu, "");
+  return stripped.length;
+}
+function estimateMinutes(charCount) { return Math.round(charCount / 160); }
+
+function splitParagraphs(text) {
+  return text.split(/\r?\n/).map(s => s.trim()).filter(s => s.length > 0);
+}
+
+function splitParagraphsIntoChunks(paragraphs, numChunks) {
+  const chunks = Array.from({ length: numChunks }, () => []);
+  const total = paragraphs.length;
+  if (total === 0) return chunks.map(() => "");
+  const base = Math.floor(total / numChunks);
+  const remainder = total % numChunks;
+  let idx = 0;
+  for (let i = 0; i < numChunks; i++) {
+    let count = base + (i < remainder ? 1 : 0);
+    for (let j = 0; j < count; j++) { if (idx < total) chunks[i].push(paragraphs[idx++]); }
+  }
+  return chunks.map(c => c.join("\n\n"));
+}
+
+function splitByCharsEvenly(text, numChunks) {
+  const cleaned = (text || "").trim();
+  if (!cleaned) return Array(numChunks).fill("");
+  const total = cleaned.length;
+  const target = Math.ceil(total / numChunks);
+  const breakChars = ["\n", "。", "！", "？", "，", "；"];
+  const window = 60;
+  const result = [];
+  let start = 0;
+  for (let i = 0; i < numChunks; i++) {
+    if (i === numChunks - 1 || start >= total) { result.push(cleaned.slice(start).trim()); start = total; continue; }
+    const idealEnd = Math.min(start + target, total);
+    let cut = -1;
+    for (let w = 0; w <= window && idealEnd + w < total; w++) { if (breakChars.includes(cleaned[idealEnd + w])) { cut = idealEnd + w + 1; break; } }
+    if (cut === -1) { for (let w = 0; w <= window && idealEnd - w > start; w++) { if (breakChars.includes(cleaned[idealEnd - w])) { cut = idealEnd - w + 1; break; } } }
+    const end = cut !== -1 ? cut : idealEnd;
+    result.push(cleaned.slice(start, end).trim());
+    start = end;
+  }
+  return result;
+}
+
+function splitParasIntoNChunks(paras, numChunks) {
+  if (paras.length >= numChunks) return splitParagraphsIntoChunks(paras, numChunks);
+  return splitByCharsEvenly(paras.join("\n\n"), numChunks);
+}
+
+function isHeadingLine(line) {
+  const trimmed = (line || "").trim();
+  if (!trimmed || trimmed.length > 40) return false;
+  if (/^[壹貳參肆伍陸柒捌玖拾一二三四五六七八九十]{1,3}[\s　、．.]/.test(trimmed)) return true;
+  if (trimmed.length <= 25 && !/[。！？，]/.test(trimmed)) return true;
+  return false;
+}
+
+function smartSplitToSix(text) {
+  const paragraphs = splitParagraphs(text);
+  if (paragraphs.length === 0) return { firstChunks: ["", "", ""], secondChunks: ["", "", ""] };
+  const lens = paragraphs.map(p => p.length);
+  const total = lens.reduce((a, b) => a + b, 0);
+  const target = total / 2;
+  const windowSize = total * 0.25;
+  const prefix = [];
+  let acc = 0;
+  for (let i = 0; i < lens.length; i++) { acc += lens[i]; prefix.push(acc); }
+  let bestIdx = -1, bestDiff = Infinity;
+  for (let i = 0; i < paragraphs.length - 1; i++) {
+    const diff = Math.abs(prefix[i] - target);
+    if (diff <= windowSize && isHeadingLine(paragraphs[i + 1])) { if (diff < bestDiff) { bestDiff = diff; bestIdx = i; } }
+  }
+  if (bestIdx === -1) {
+    bestDiff = Infinity;
+    for (let i = 0; i < paragraphs.length - 1; i++) { const diff = Math.abs(prefix[i] - target); if (diff < bestDiff) { bestDiff = diff; bestIdx = i; } }
+  }
+  if (bestIdx === -1) bestIdx = Math.max(0, Math.floor(paragraphs.length / 2) - 1);
+  const firstHalf = paragraphs.slice(0, bestIdx + 1);
+  const secondHalf = paragraphs.slice(bestIdx + 1);
+  return {
+    firstChunks: splitParasIntoNChunks(firstHalf, 3),
+    secondChunks: splitParasIntoNChunks(secondHalf.length ? secondHalf : firstHalf, 3)
+  };
+}
+
+function toChineseNum(numStr) {
+  const digits = ["零", "一", "二", "三", "四", "五", "六", "七", "八", "九"];
+  const units = ["", "十", "百", "千"];
+  const n = parseInt(numStr, 10);
+  if (isNaN(n) || n < 0) return numStr;
+  if (n === 0) return "零";
+  const str = String(n);
+  const len = str.length;
+  let result = "";
+  for (let i = 0; i < len; i++) {
+    const d = parseInt(str[i], 10);
+    const unitIdx = len - i - 1;
+    if (d !== 0) {
+      if (d === 1 && unitIdx === 1 && len === 2) result += units[unitIdx];
+      else result += digits[d] + units[unitIdx];
+    } else if (result && !result.endsWith("零") && i !== len - 1) {
+      result += "零";
+    }
+  }
+  return result.replace(/零+$/, "");
+}
+
+function formatChapterNum(raw) {
+  const trimmed = (raw || "").trim();
+  if (!trimmed) return "";
+  return /^\d+$/.test(trimmed) ? toChineseNum(trimmed) : trimmed;
+}
+
+function bookTitleDisplay(data) {
+  const chapter = formatChapterNum(data.chapterNum);
+  let title = `${data.bookName || ""}生命讀經`;
+  if (chapter) title += `－第${chapter}篇`;
+  if (data.chapterTitle) title += ` ${data.chapterTitle}`;
+  return title.trim();
+}
+
+function getFormData() {
+  return {
+    bookName: document.getElementById("bookSelect").value.trim(),
+    chapterNum: document.getElementById("chapterSelect").value.trim(),
+    chapterTitle: document.getElementById("chapterTitle").value.trim(),
+    verseRef: document.getElementById("verseRef").value.trim(),
+    partner1Name: document.getElementById("partner1Name").value.trim(),
+    partner1Hall: document.getElementById("partner1Hall").value.trim(),
+    partner2Name: document.getElementById("partner2Name").value.trim(),
+    partner2Hall: document.getElementById("partner2Hall").value.trim(),
+    partner3Name: document.getElementById("partner3Name").value.trim(),
+    partner3Hall: document.getElementById("partner3Hall").value.trim(),
+    verseText: document.getElementById("verseText").value.trim()
+  };
+}
+
+function showAlert(msg) {
+  const box = document.getElementById("alertBox");
+  box.textContent = msg;
+  box.style.display = "block";
+  box.scrollIntoView({ behavior: "smooth", block: "center" });
+}
+function hideAlert() { document.getElementById("alertBox").style.display = "none"; }
+
+function escapeHtml(str) {
+  return (str || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+/* ============================================================
+   人位標籤顯示邏輯
+   ============================================================ */
+function partnerDisplay(key, data) {
+  const nameMap = { partner1: data.partner1Name, partner2: data.partner2Name, partner3: data.partner3Name };
+  const hallMap = { partner1: data.partner1Hall, partner2: data.partner2Hall, partner3: data.partner3Hall };
+  const fallback = { partner1: "配搭1", partner2: "配搭2", partner3: "配搭3" };
+  const name = (nameMap[key] || "").trim();
+  const hall = (hallMap[key] || "").trim();
+  if (!name) return fallback[key] || key;
+  return `${hall}${name}弟兄`;
+}
+
+function speakerHeadingText(key, data) {
+  if (key === "partner1" || key === "partner2" || key === "partner3") {
+    return `${partnerDisplay(key, data)} 用靈宣讀`;
+  }
+  const fixedPartner = ROLE_FIXED_PARTNER[key];
+  return `${partnerDisplay(fixedPartner, data)} ${ROLE_ACTION_LABEL[key]}`;
+}
+
+// 段落卡片「人位」下拉選單：只列配搭1/2/3，直接顯示真實姓名
+function partnerSelectOptionsHtml(selectedKey, data) {
+  return ["partner1", "partner2", "partner3"].map(key =>
+    `<option value="${key}"${key === selectedKey ? " selected" : ""}>${escapeHtml(partnerDisplay(key, data))}</option>`
+  ).join("");
+}
+
+// 固定角色框顯示文字：「角色（真實姓名）」
+function fixedCardLabel(role, data) {
+  const fixedPartner = ROLE_FIXED_PARTNER[role];
+  return `${ROLE_MENU_LABEL[role]}（${partnerDisplay(fixedPartner, data)}）`;
+}
+
+/* ============================================================
+   基本資料：書卷／篇數 連動選單、篇名自動帶入、標題預覽、
+   姓名→會所 自動帶入、姓名模糊搜尋自動完成
+   ============================================================ */
+function populateBookSelect() {
+  const sel = document.getElementById("bookSelect");
+  const ogOT = document.createElement("optgroup"); ogOT.label = "舊約";
+  const ogNT = document.createElement("optgroup"); ogNT.label = "新約";
+  BOOKS_OT.forEach(([name]) => { const opt = document.createElement("option"); opt.value = name; opt.textContent = name; ogOT.appendChild(opt); });
+  BOOKS_NT.forEach(([name]) => { const opt = document.createElement("option"); opt.value = name; opt.textContent = name; ogNT.appendChild(opt); });
+  sel.appendChild(ogOT);
+  sel.appendChild(ogNT);
+}
+
+function populateChapterSelect(bookName) {
+  const sel = document.getElementById("chapterSelect");
+  sel.innerHTML = "";
+  const found = BOOKS_ALL.find(([name]) => name === bookName);
+  if (!found) { sel.innerHTML = '<option value="">請先選擇書卷</option>'; return; }
+  const count = found[1];
+  for (let n = 1; n <= count; n++) {
+    const opt = document.createElement("option");
+    opt.value = String(n);
+    opt.textContent = `第${toChineseNum(String(n))}篇`;
+    sel.appendChild(opt);
+  }
+}
+
+function autofillChapterTitle() {
+  const book = document.getElementById("bookSelect").value;
+  const chapNum = document.getElementById("chapterSelect").value;
+  const hintEl = document.getElementById("chapterTitleHint");
+  const titles = TITLE_DB[book];
+  if (titles && chapNum && titles[Number(chapNum) - 1]) {
+    document.getElementById("chapterTitle").value = titles[Number(chapNum) - 1];
+    hintEl.textContent = "✅ 已自動帶入官方篇名，可視需要自行修改";
+  } else if (book) {
+    hintEl.textContent = "⚠️ 此書卷篇名尚未收錄於資料庫，請手動輸入篇名";
+  } else {
+    hintEl.textContent = "";
+  }
+}
+
+function refreshTitlePreview() {
+  const data = {
+    bookName: document.getElementById("bookSelect").value.trim(),
+    chapterNum: document.getElementById("chapterSelect").value.trim(),
+    chapterTitle: document.getElementById("chapterTitle").value.trim()
+  };
+  const display = bookTitleDisplay(data);
+  document.getElementById("titlePreview").innerHTML =
+    "預覽：<strong>" + escapeHtml(display && display !== "生命讀經" ? display : "（尚未填寫）") + "</strong>";
+}
+
+document.getElementById("bookSelect").addEventListener("change", (e) => {
+  populateChapterSelect(e.target.value);
+  autofillChapterTitle();
+  refreshTitlePreview();
+});
+document.getElementById("chapterSelect").addEventListener("change", () => { autofillChapterTitle(); refreshTitlePreview(); });
+document.getElementById("chapterTitle").addEventListener("input", refreshTitlePreview);
+
+function setupNameAutocomplete(nameId, hallId, listId) {
+  const input = document.getElementById(nameId);
+  const hallEl = document.getElementById(hallId);
+  const list = document.getElementById(listId);
+
+  input.addEventListener("input", () => {
+    const q = input.value.trim();
+    const matched = NAME_TO_HALL[q];
+    if (matched) hallEl.value = matched;
+    renderSegments();
+
+    if (!q) { list.classList.remove("show"); list.innerHTML = ""; return; }
+    const names = Object.keys(NAME_TO_HALL).filter(n => n.includes(q));
+    if (names.length === 0) { list.classList.remove("show"); list.innerHTML = ""; return; }
+    list.innerHTML = names.slice(0, 8).map(n =>
+      `<div class="autocomplete-item" data-name="${escapeHtml(n)}">${escapeHtml(n)}（${NAME_TO_HALL[n]}）</div>`
+    ).join("");
+    list.classList.add("show");
+  });
+
+  list.addEventListener("mousedown", (e) => {
+    const item = e.target.closest(".autocomplete-item");
+    if (!item) return;
+    const n = item.dataset.name;
+    input.value = n;
+    hallEl.value = NAME_TO_HALL[n] || hallEl.value;
+    list.classList.remove("show");
+    list.innerHTML = "";
+    renderSegments();
+  });
+
+  input.addEventListener("blur", () => setTimeout(() => list.classList.remove("show"), 150));
+  hallEl.addEventListener("input", renderSegments);
+}
+
+setupNameAutocomplete("partner1Name", "partner1Hall", "partner1NameList");
+setupNameAutocomplete("partner2Name", "partner2Hall", "partner2NameList");
+setupNameAutocomplete("partner3Name", "partner3Hall", "partner3NameList");
+
+window.addEventListener("DOMContentLoaded", () => {
+  populateBookSelect();
+  populateChapterSelect("");
+  refreshTitlePreview();
+  renderSegments();
+});
+
+/* ============================================================
+   段落卡片狀態管理
+   segments 陣列中每個項目為：
+   - 朗讀段落：{ id, kind:"read", speaker:"partner1|2|3", text }
+   - 固定角色框（中間分享／結尾分享／結尾禱告）：{ id, kind:"fixed", role }
+   ============================================================ */
+let segments = [];
+let idCounter = 1;
+let dragSrcId = null;
+
+function createReadSegment(speaker, text) {
+  return { id: idCounter++, kind: "read", speaker: speaker || "partner1", text: text || "" };
+}
+function createFixedSegment(role) {
+  return { id: idCounter++, kind: "fixed", role };
+}
+
+function autoGrow(el) {
+  if (!el) return;
+  el.style.height = "auto";
+  el.style.height = (el.scrollHeight + 2) + "px";
+}
+
+function renderSegments() {
+  const container = document.getElementById("segmentsContainer");
+  const emptyHint = document.getElementById("emptyHint");
+  const data = getFormData();
+
+  if (segments.length === 0) {
+    container.innerHTML = "";
+    emptyHint.style.display = "block";
+    updateStats();
+    return;
+  }
+  emptyHint.style.display = "none";
+
+  container.innerHTML = segments.map((seg, index) => {
+    const iconBtns = `
+      <div class="card-icon-btns">
+        <button type="button" class="icon-btn" data-action="insert-after" title="在此段之後新增段落">＋</button>
+        <button type="button" class="icon-btn danger" data-action="delete" title="刪除此段（內容將併入前一段）">🗑</button>
+      </div>`;
+
+    if (seg.kind === "fixed") {
+      const roleClass = seg.role === "closePray" ? "role-prayer" : "role-share";
+      return `
+      <div class="segment-card fixed-card ${roleClass}" data-id="${seg.id}">
+        <span class="drag-handle" draggable="true" title="拖曳調整順序">⠿⠿</span>
+        <span class="segment-order-badge">${index + 1}</span>
+        <span class="fixed-card-label">${escapeHtml(fixedCardLabel(seg.role, data))}
+          <span class="fixed-card-note">內容由該配搭當日自行預備，此處為固定提示框，無需編輯</span>
+        </span>
+        ${iconBtns}
+      </div>`;
+    }
+
+    return `
+      <div class="segment-card" data-id="${seg.id}">
+        <div class="segment-card-header">
+          <span class="drag-handle" draggable="true" title="拖曳調整順序">⠿⠿</span>
+          <span class="segment-order-badge">${index + 1}</span>
+          <select class="form-control speaker-select" data-role="speaker">
+            ${partnerSelectOptionsHtml(seg.speaker, data)}
+          </select>
+          <span class="spacer"></span>
+          ${iconBtns}
+        </div>
+        <textarea class="form-control segment-text" data-role="text" placeholder="請輸入本段朗讀內文">${escapeHtml(seg.text)}</textarea>
+        <div class="segment-charcount" data-role="charcount">字數：${countChars(seg.text)}</div>
+      </div>`;
+  }).join("");
+
+  container.querySelectorAll("textarea.segment-text").forEach(autoGrow);
+  updateStats();
+}
+
+function updateStats() {
+  const total = segments.filter(s => s.kind === "read").reduce((sum, s) => sum + countChars(s.text), 0);
+  const readCount = segments.filter(s => s.kind === "read").length;
+  const minutes = estimateMinutes(total);
+  const statsArea = document.getElementById("statsArea");
+  statsArea.innerHTML = `
+    <span class="stat-pill"><span class="icon-badge">📄</span>朗讀段落數 <span class="val">${readCount}</span> 段</span>
+    <span class="stat-pill"><span class="icon-badge">📝</span>內文總字數 <span class="val">${total}</span> 字</span>
+    <span class="stat-pill"><span class="icon-badge">⏱</span>預估朗讀時間 <span class="val">${minutes}</span> 分鐘</span>
+  `;
+}
+
+/* ---------- 事件委派：輸入 / 選單 / 新增 / 刪除（含合併） ---------- */
+
+function findSegmentByCardEl(el) {
+  const card = el.closest(".segment-card");
+  if (!card) return null;
+  const id = Number(card.dataset.id);
+  return segments.find(s => s.id === id);
+}
+
+const segContainerEl = document.getElementById("segmentsContainer");
+
+segContainerEl.addEventListener("input", (e) => {
+  if (e.target.dataset.role === "text") {
+    const seg = findSegmentByCardEl(e.target);
+    if (!seg) return;
+    seg.text = e.target.value;
+    autoGrow(e.target);
+    const card = e.target.closest(".segment-card");
+    const counter = card.querySelector('[data-role="charcount"]');
+    if (counter) counter.textContent = `字數：${countChars(seg.text)}`;
+    updateStats();
+  }
+});
+
+segContainerEl.addEventListener("change", (e) => {
+  if (e.target.dataset.role === "speaker") {
+    const seg = findSegmentByCardEl(e.target);
+    if (!seg) return;
+    seg.speaker = e.target.value;
+    renderSegments();
+  }
+});
+
+function deleteSegment(id) {
+  const idx = segments.findIndex(s => s.id === id);
+  if (idx === -1) return;
+  const seg = segments[idx];
+  if (seg.kind === "read" && seg.text && seg.text.trim()) {
+    let target = null;
+    for (let i = idx - 1; i >= 0; i--) { if (segments[i].kind === "read") { target = segments[i]; break; } }
+    if (target) {
+      target.text = target.text ? (target.text + "\n\n" + seg.text) : seg.text;
+    } else {
+      for (let i = idx + 1; i < segments.length; i++) { if (segments[i].kind === "read") { target = segments[i]; break; } }
+      if (target) target.text = target.text ? (seg.text + "\n\n" + target.text) : seg.text;
+    }
+  }
+  segments.splice(idx, 1);
+  renderSegments();
+}
+
+function insertAfterId(id) {
+  const idx = segments.findIndex(s => s.id === id);
+  const newSeg = createReadSegment("partner1", "");
+  if (idx === -1) segments.push(newSeg); else segments.splice(idx + 1, 0, newSeg);
+  renderSegments();
+  focusLastEmptyTextarea(newSeg.id);
+}
+
+function focusLastEmptyTextarea(id) {
+  const card = segContainerEl.querySelector(`.segment-card[data-id="${id}"]`);
+  if (!card) return;
+  const ta = card.querySelector("textarea.segment-text");
+  if (ta) ta.focus();
+  card.scrollIntoView({ behavior: "smooth", block: "center" });
+}
+
+segContainerEl.addEventListener("click", (e) => {
+  const delBtn = e.target.closest('[data-action="delete"]');
+  if (delBtn) {
+    const seg = findSegmentByCardEl(delBtn);
+    if (seg) deleteSegment(seg.id);
+    return;
+  }
+  const addBtn = e.target.closest('[data-action="insert-after"]');
+  if (addBtn) {
+    const seg = findSegmentByCardEl(addBtn);
+    if (seg) insertAfterId(seg.id);
+    return;
+  }
+});
+
+/* ---------- 拖曳排序（純 HTML5 Drag and Drop API） ---------- */
+segContainerEl.addEventListener("dragstart", (e) => {
+  const handle = e.target.closest(".drag-handle");
+  if (!handle) return;
+  const card = handle.closest(".segment-card");
+  if (!card) return;
+  dragSrcId = Number(card.dataset.id);
+  card.classList.add("dragging");
+  e.dataTransfer.effectAllowed = "move";
+  try { e.dataTransfer.setDragImage(card, 20, 20); } catch (err) { /* 忽略不支援的瀏覽器 */ }
+});
+segContainerEl.addEventListener("dragover", (e) => {
+  if (dragSrcId === null) return;
+  e.preventDefault();
+  const card = e.target.closest(".segment-card");
+  if (card) card.classList.add("drag-over");
+});
+segContainerEl.addEventListener("dragleave", (e) => {
+  const card = e.target.closest(".segment-card");
+  if (card) card.classList.remove("drag-over");
+});
+segContainerEl.addEventListener("drop", (e) => {
+  e.preventDefault();
+  const card = e.target.closest(".segment-card");
+  if (!card || dragSrcId === null) return;
+  const targetId = Number(card.dataset.id);
+  card.classList.remove("drag-over");
+  if (targetId !== dragSrcId) {
+    const fromIdx = segments.findIndex(s => s.id === dragSrcId);
+    const toIdx = segments.findIndex(s => s.id === targetId);
+    if (fromIdx !== -1 && toIdx !== -1) {
+      const [moved] = segments.splice(fromIdx, 1);
+      segments.splice(toIdx, 0, moved);
+      renderSegments();
+    }
+  }
+});
+segContainerEl.addEventListener("dragend", () => {
+  dragSrcId = null;
+  segContainerEl.querySelectorAll(".segment-card").forEach(c => c.classList.remove("dragging", "drag-over"));
+});
+
+/* ---------- 「貼入文字並智慧分段」／「新增段落」 ---------- */
+document.getElementById("splitBtn").addEventListener("click", () => {
+  const raw = document.getElementById("pasteText").value.trim();
+  if (!raw) { showAlert("請先在上方貼上生命讀經內文，再進行自動分段。"); return; }
+  if (segments.length > 0) {
+    const ok = confirm("此操作將取代目前所有段落卡片內容，是否繼續？");
+    if (!ok) return;
+  }
+  hideAlert();
+
+  const { firstChunks, secondChunks } = smartSplitToSix(raw);
+  const chunks = [...firstChunks, ...secondChunks];
+
+  segments = [
+    createReadSegment(DEFAULT_SPLIT_SPEAKERS[0], chunks[0]),
+    createReadSegment(DEFAULT_SPLIT_SPEAKERS[1], chunks[1]),
+    createReadSegment(DEFAULT_SPLIT_SPEAKERS[2], chunks[2]),
+    createFixedSegment("midShare"),
+    createReadSegment(DEFAULT_SPLIT_SPEAKERS[3], chunks[3]),
+    createReadSegment(DEFAULT_SPLIT_SPEAKERS[4], chunks[4]),
+    createReadSegment(DEFAULT_SPLIT_SPEAKERS[5], chunks[5]),
+    createFixedSegment("endShare"),
+    createFixedSegment("closePray")
+  ];
+  renderSegments();
+});
+
+document.getElementById("addSegmentBtn").addEventListener("click", () => {
+  const newSeg = createReadSegment("partner1", "");
+  segments.push(newSeg);
+  renderSegments();
+  focusLastEmptyTextarea(newSeg.id);
+});
+
+/* ============================================================
+   Word（.doc）產生 —— 純 HTML 轉 Word 離線方案
+   ============================================================ */
+function htmlParagraphs(text, opts) {
+  opts = opts || {};
+  const italicStyle = opts.italics ? "font-style:italic;" : "";
+  const lines = (text || "").split(/\r?\n/);
+  return lines.map(line => {
+    const content = line.length ? escapeHtml(line) : "&nbsp;";
+    return `<p style="margin:0 0 10pt 0;font-size:11pt;line-height:1.6;${italicStyle}">${content}</p>`;
+  }).join("\n");
+}
+
+function speakerHeadingHtml(text) {
+  return `<p style="margin:18pt 0 6pt 0;"><b><span style="background-color:#FFFF00;mso-highlight:yellow;color:#000000;font-size:12pt;padding:1pt 2pt;">${escapeHtml(text)}</span></b></p>`;
+}
+function sectionHeadingHtml(text) {
+  return `<p style="margin:24pt 0 10pt 0;padding-bottom:4pt;font-size:14pt;font-weight:bold;color:#2C3E50;border-bottom:1pt solid #4A6FA5;">${escapeHtml(text)}</p>`;
+}
+function bulletLineHtml(text) {
+  return `<p style="margin:0 0 6pt 0;font-size:11pt;">• ${escapeHtml(text)}</p>`;
+}
+
+function buildWordHtmlBody(data, charCount, minutes, segs) {
+  let body = "";
+  const titleText = bookTitleDisplay(data);
+  const p1 = partnerDisplay("partner1", data);
+  const p2 = partnerDisplay("partner2", data);
+  const p3 = partnerDisplay("partner3", data);
+
+  body += `<h1 style="text-align:center;color:#2C3E50;font-size:20pt;margin:0 0 6pt 0;">${escapeHtml(titleText || "生命讀經共讀班")}</h1>`;
+  body += `<p style="text-align:center;color:#4A6FA5;font-style:italic;font-size:12pt;margin:0 0 20pt 0;">${escapeHtml(data.verseRef || "")}</p>`;
+
+  body += sectionHeadingHtml("抬頭預備資訊");
+  body += bulletLineHtml(`本次配搭人位及順序：${p1}、${p2}、${p3}`);
+  body += bulletLineHtml(`本篇文本字數約 ${charCount} 字（不含標點符號與空白）。`);
+  body += bulletLineHtml(`本次共 ${segs.length} 個朗讀／分享／禱告段落，本文預估約 ${minutes} 分鐘。（以 160 字／分鐘計算）`);
+
+  body += sectionHeadingHtml("聚會開始（以下為本次逐字稿文本）");
+
+  body += speakerHeadingHtml(`${p1} 用靈提醒、禱告並宣讀經文`);
+  body += htmlParagraphs(
+    `弟兄姊妹們晚安，我們準備開始今天晚上的共讀班，開頭先簡單的自我介紹，我是${p1}、我是${p2}、我是${p3}，歡迎弟兄姊妹一起上線共讀。\n1. 請弟兄姊妹更改顯示名稱為「會所－大區－小區－姓名」的格式。\n2. 請弟兄姊妹預備「恢復本聖經」及本次讀經內容，跟著我們一同進入神豐盛的生命。\n3. ${p1} 開頭禱告（請自行預備禱告內容）`
+  );
+
+  body += speakerHeadingHtml(`${p1} 宣讀經文`);
+  body += htmlParagraphs(`請大家翻開恢復本聖經【${data.verseRef}】，我們可以同聲宣讀今日的經節～`);
+  body += htmlParagraphs(data.verseText);
+
+  body += speakerHeadingHtml(`${p1} 前言回顧與連結`);
+  body += htmlParagraphs("（請主持人依當日情況，自行預備本次前言回顧，並連結今日經節與綱要內容）");
+
+  segs.forEach(seg => {
+    const key = seg.kind === "fixed" ? seg.role : seg.speaker;
+    const text = seg.kind === "fixed" ? FIXED_PLACEHOLDER_TEXT[seg.role] : seg.text;
+    const heading = speakerHeadingText(key, data);
+    body += speakerHeadingHtml(heading);
+    body += htmlParagraphs(text, { italics: seg.kind === "fixed" });
+  });
+
+  return body;
+}
+
+function buildWordDocument(data, charCount, minutes, segs) {
+  const bodyHtml = buildWordHtmlBody(data, charCount, minutes, segs);
+  const title = escapeHtml(bookTitleDisplay(data) || "生命讀經共讀班");
+  return `<!DOCTYPE html>
+<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">
+<head>
+<meta charset="utf-8">
+<title>${title}</title>
+<!--[if gte mso 9]>
+<xml>
+<w:WordDocument>
+<w:View>Print</w:View>
+<w:Zoom>100</w:Zoom>
+<w:DoNotOptimizeForBrowser/>
+</w:WordDocument>
+</xml>
+<![endif]-->
+<style>
+  @page { size: 21cm 29.7cm; margin: 2.5cm 2cm; }
+  body { font-family: "Microsoft JhengHei", "PMingLiU", "Noto Sans TC", sans-serif; font-size: 11pt; color:#333333; line-height:1.6; }
+</style>
+</head>
+<body>
+${bodyHtml}
+</body>
+</html>`;
+}
+
+function downloadAsWordDoc(htmlString, fileName) {
+  const blob = new Blob(["﻿", htmlString], { type: "application/msword" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = fileName;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  setTimeout(() => URL.revokeObjectURL(url), 2000);
+}
+
+/* ============================================================
+   主流程
+   ============================================================ */
+function validate(data) {
+  const required = [
+    ["bookName", "共讀書名（書卷）"],
+    ["chapterNum", "篇數"],
+    ["chapterTitle", "篇名"],
+    ["verseRef", "經節範圍"],
+    ["partner1Name", "配搭 1（主持人）姓名"],
+    ["partner1Hall", "配搭 1 會所"],
+    ["partner2Name", "配搭 2 姓名"],
+    ["partner2Hall", "配搭 2 會所"],
+    ["partner3Name", "配搭 3 姓名"],
+    ["partner3Hall", "配搭 3 會所"]
+  ];
+  const missing = required.filter(([key]) => !data[key]).map(([, label]) => label);
+  if (segments.filter(s => s.kind === "read").length === 0) missing.push("至少一個朗讀段落（請貼上內文自動分段或手動新增段落）");
+  return missing;
+}
+
+function safeFileName(name) {
+  return (name || "生命讀經共讀班逐字稿").replace(/[\\/:*?"<>|]/g, "").slice(0, 60);
+}
+
+function generateAll() {
+  hideAlert();
+  const data = getFormData();
+  const missing = validate(data);
+  if (missing.length > 0) { showAlert("請先確認以下項目：" + missing.join("、")); return; }
+
+  const total = segments.filter(s => s.kind === "read").reduce((sum, s) => sum + countChars(s.text), 0);
+  const minutes = estimateMinutes(total);
+
+  const btn = document.getElementById("generateBtn");
+  const originalLabel = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = "⏳ 產生中，請稍候...";
+
+  try {
+    const htmlString = buildWordDocument(data, total, minutes, segments);
+    const today = new Date();
+    const dateStr = `${today.getFullYear()}${String(today.getMonth() + 1).padStart(2, "0")}${String(today.getDate()).padStart(2, "0")}`;
+    const fileName = `${dateStr}_${safeFileName(bookTitleDisplay(data))}.doc`;
+    downloadAsWordDoc(htmlString, fileName);
+  } catch (err) {
+    console.error(err);
+    showAlert("產生 Word 檔時發生錯誤：" + err.message);
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = originalLabel;
+  }
+}
+</script>
+
+</body>
+</html>
