@@ -1129,31 +1129,7 @@ function groupIntoUnits(paragraphs) {
       current.len += line.length;
     }
   });
-  return mergeOrphanHeadingUnits(units);
-}
-
-// 把「整個區塊只有標題、完全沒有內文」的孤兒標題（例如巢狀點：
-// 「1　因著耶羅波安的背叛」後面直接接著更小一層的「a／b／c…」子標題，
-// 中間沒有任何說明文字）併入下一個區塊，讓標題與它實際的說明內容
-// （即使是以巢狀子點的形式呈現）留在同一段落卡片、同一個人朗讀。
-// 由後往前掃描一次即可正確處理連續孤兒標題的情況。
-function mergeOrphanHeadingUnits(units) {
-  const hasBody = (u) => u.lines.some(l => !isHeadingLine(l));
-  for (let i = units.length - 2; i >= 0; i--) {
-    if (units[i] && !hasBody(units[i])) {
-      units[i + 1] = { lines: [...units[i].lines, ...units[i + 1].lines], len: units[i].len + units[i + 1].len };
-      units[i] = null;
-    }
-  }
-  let result = units.filter(u => u !== null);
-  // 若整篇最後一個區塊仍然只有標題、沒有內文（沒有下一個區塊可併入），
-  // 改併入前一個區塊。
-  if (result.length > 1 && !hasBody(result[result.length - 1])) {
-    const last = result.pop();
-    const prevIdx = result.length - 1;
-    result[prevIdx] = { lines: [...result[prevIdx].lines, ...last.lines], len: result[prevIdx].len + last.len };
-  }
-  return result;
+  return units;
 }
 
 function unitsToText(units) {
@@ -1161,49 +1137,16 @@ function unitsToText(units) {
   return units.map(u => u.lines.join("\n\n")).join("\n\n");
 }
 
-// 僅在「完整句子」（。！？）之間切開，絕不切在逗號、分號等弱停頓處，
-// 避免讀到一半就莫名其妙換人朗讀。僅作為段落數不足時的最後手段。
-function splitBySentenceBoundary(text, numChunks) {
-  const cleaned = (text || "").trim();
-  if (!cleaned) return Array(numChunks).fill("");
-  const total = cleaned.length;
-  const target = Math.ceil(total / numChunks);
-  const breakChars = ["\n", "。", "！", "？"];
-  const window = 80;
-  const result = [];
-  let start = 0;
-  for (let i = 0; i < numChunks; i++) {
-    if (i === numChunks - 1 || start >= total) { result.push(cleaned.slice(start).trim()); start = total; continue; }
-    const idealEnd = Math.min(start + target, total);
-    let cut = -1;
-    for (let w = 0; w <= window && idealEnd + w < total; w++) { if (breakChars.includes(cleaned[idealEnd + w])) { cut = idealEnd + w + 1; break; } }
-    if (cut === -1) { for (let w = 0; w <= window && idealEnd - w > start; w++) { if (breakChars.includes(cleaned[idealEnd - w])) { cut = idealEnd - w + 1; break; } } }
-    const end = cut !== -1 ? cut : idealEnd;
-    result.push(cleaned.slice(start, end).trim());
-    start = end;
-  }
-  return result;
-}
-
-// 把明顯過長的單一點區塊拆成若干子區塊，拆完後仍視為一般區塊參與
-// 後續分配（此為唯一允許切開點區塊內部的情況）。優先在區塊內部原本
-// 就存在的「段落」邊界切開（每個段落都是完整的一句或一小段話，不會
-// 被攔腰斬斷）；只有當段落數量太少、不足以支撐切成這麼多份時，才
-// 退而求其次依完整句子（。！？）為界切開。
+// 把明顯過長的單一點區塊，依標點/換行盡量平均地拆成若干子區塊，
+// 拆完後仍視為一般區塊參與後續分配（此為唯一允許切開點區塊內部的情況）。
 function expandOversizedUnits(units, roughTarget) {
   if (!roughTarget || !isFinite(roughTarget) || roughTarget <= 0) return units;
   const maxAllowed = roughTarget * 1.8;
   const result = [];
   units.forEach(u => {
-    if (u.len <= maxAllowed) { result.push(u); return; }
-    const pieceCount = Math.max(2, Math.ceil(u.len / roughTarget));
-    let subTexts;
-    if (u.lines.length >= pieceCount) {
-      const pseudoUnits = u.lines.map(l => ({ lines: [l], len: l.length }));
-      subTexts = splitUnitsIntoNChunks(pseudoUnits, pieceCount);
-    } else {
-      subTexts = splitBySentenceBoundary(u.lines.join("\n\n"), pieceCount);
-    }
+    if (u.len <= maxAllowed || u.lines.length <= 1) { result.push(u); return; }
+    const pieceCount = Math.max(2, Math.min(u.lines.length, Math.ceil(u.len / roughTarget)));
+    const subTexts = splitByCharsEvenly(u.lines.join("\n\n"), pieceCount);
     subTexts.forEach(t => { const trimmed = t.trim(); if (trimmed) result.push({ lines: [trimmed], len: trimmed.length }); });
   });
   return result;
